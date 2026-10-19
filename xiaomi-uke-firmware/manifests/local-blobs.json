@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "device": "uke",
+  "soc": "SM7675",
+  "source_release": "OS3.0.303.0.WOZMIXM",
+  "blob_root": "private/oem-blobs",
+  "public_upload_allowed": false,
+  "per_device_data_included": false,
+  "notes": "Hashes only; no OEM bytes are stored in this repository. Per-device calibration and identifiers are read from the tablet's read-only persist partition at runtime and must never be bundled.",
+  "runtime_only": [
+    "persist/wlan/wlan_mac.bin",
+    "persist/bluetooth/.bt_nv.bin",
+    "persist/sensors/registry/",
+    "persist/serialno",
+    "devinfo",
+    "factory",
+    "modemst1",
+    "modemst2",
+    "fsg"
+  ],
+  "entries": [
+    {
+      "id": "touch-normal-csot",
+      "kind": "file",
+      "path": "touch/csot/normal.bin",
+      "bytes": 245760,
+      "sha256": "a4f949fb89c7eaad9da85a5885cd2dcc1fffbf08bc1e7ffe9f0bb97c1769b310",
+      "source": "super.img:odm/firmware/novatek_nt36532_o82_fw_csot.bin",
+      "required_by": ["uke-local-touch-data", "uke-touchscreen"],
+      "per_device": false,
+      "optional": false
+    },
+    {
+      "id": "touch-config-csot",
+      "kind": "file",
+      "path": "touch/csot/config.ini",
+      "bytes": 36228,
+      "sha256": "c02d1956da3714bbd9a19f14ca814731cffd4e2442677a83d5e071ea547a0616",
+      "source": "super.img:odm/firmware/o82_nova_thp_config.ini",
+      "required_by": ["uke-local-touch-data", "uke-touchscreen"],
+      "per_device": false,
+      "optional": false
+    },
+    {
+      "id": "touch-reference",
+      "kind": "file",
+      "path": "touch/reference.bin",
+      "bytes": 5432,
+      "sha256": "6187f2afe4472c0694ab343ce6eee4def227c5226a8f4d1d93784d19627c5497",
+      "source": "device:/proc/nvt_raw (no-touch median, wrapped in a THP packet)",
+      "required_by": ["uke-local-touch-data", "uke-touchscreen"],
+      "per_device": true,
+      "optional": false
+    },
+    {
+      "id": "touch-tm-panel",
+      "kind": "directory",
+      "path": "touch/tm",
+      "files": 2,
+      "tree_sha256": "202f3c2811020dfef659b86565c7d4aa6c54f1967ee5b90a821a558c38d78158",
+      "source": "super.img:odm/firmware/novatek_nt36532_o82_fw_tm.bin + o82_nova_tm_thp_config.ini",
+      "required_by": ["uke-local-touch-data"],
+      "per_device": false,
+      "optional": true
+    },
+    {
+      "id": "ssc-odm-config",
+      "kind": "directory",
+      "path": "ssc/odm",
+      "files": 68,
+      "tree_sha256": "cf60815c55afeaabb97c704cc4d2fe56e4a23a4480e73fc5b8bb5e789451a340",
+      "source": "super.img:odm/etc/sensors/config",
+      "required_by": ["uke-ssc-fileservice", "uke-adaptive-display"],
+      "per_device": false,
+      "optional": false
+    },
+    {
+      "id": "ssc-regconf",
+      "kind": "file",
+      "path": "ssc/sns_reg.conf",
+      "bytes": 574,
+      "sha256": "1955666f46427f102b2bf19a0018123fbc27cf6951d531a5e623823a0ed1ea35",
+      "source": "super.img:vendor/etc/sensors/sns_reg_config",
+      "required_by": ["uke-ssc-fileservice", "uke-adaptive-display"],
+      "per_device": false,
+      "optional": false
+    },
+    {
+      "id": "ssc-tppe",
+      "kind": "file",
+      "path": "ssc/sns_tppe.so",
+      "bytes": 270672,
+      "sha256": "1a749a720906f133011a0cf0f04caf6855e535d832f6c7b4ea2304476866f36b",
+      "source": "dspso.bin:/adsp/sns_tppe.so",
+      "required_by": ["uke-ssc-fileservice", "uke-adaptive-display"],
+      "per_device": false,
+      "optional": false
+    },
+    {
+      "id": "bt-firmware-image",
+      "kind": "directory",
+      "path": "bt/image",
+      "files": 69,
+      "tree_sha256": "aa49de19858b547899596935f243e46e482256a8c9e19880f490f4382b87e58a",
+      "source": "BTFM.bin:/image",
+      "required_by": ["uke-bluetooth"],
+      "per_device": false,
+      "optional": true
+    }
+  ]
+}

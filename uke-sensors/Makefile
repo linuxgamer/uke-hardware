@@ -120,3 +120,17 @@ test-touch-thp:
 	$(CXX) -std=c++20 -O2 -Wall -Wextra -Werror tests/touch-replay.cpp src/upstream/nt36532-thp/nvt_touch_core.cpp -lcrypto -o build/touch-replay
 	bash tests/touch-replay.sh ./build/touch-replay "$(TOUCH_CONFIG)" "$(TOUCH_FRAME_REFERENCE)"
 	$(CXX) -std=c++20 -O2 -Wall -Wextra -Werror src/touch-thp.cpp src/upstream/nt36532-thp/nvt_touch_core.cpp -lcrypto -lsystemd -o build/uke-touch-thp
+
+# Local-only touch data RPM; requires the verified private blob tree.
+.PHONY: local-touch-data
+local-touch-data:
+	bash ../xiaomi-uke-firmware/src/verify-local-blobs.sh
+	command -v rpmbuild >/dev/null || { echo 'rpmbuild is required for local-touch-data' >&2; exit 2; }
+	top="$$(realpath -m build/local-touch-data-rpm)"
+	src="$$(realpath -m build/local-touch-data-sources)"
+	mkdir -p "$$top"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS} "$$src"
+	install -m600 ../../private/oem-blobs/touch/csot/normal.bin "$$src/normal.bin"
+	install -m600 ../../private/oem-blobs/touch/csot/config.ini "$$src/config.ini"
+	install -m600 ../../private/oem-blobs/touch/reference.bin "$$src/reference.bin"
+	cp packaging/uke-local-touch-data.spec "$$top/SPECS/"
+	rpmbuild -bb --nodeps --target aarch64 --define "_topdir $$top" --define "_sourcedir $$src" "$$top/SPECS/uke-local-touch-data.spec"
