@@ -17,12 +17,10 @@ sudo systemctl enable --force plasmalogin.service
 Remove any previous display manager's explicit startup links before rebooting;
 only one manager may run. Preserve the previous package for rollback during
 validation. Sensor startup does not depend on a specific login manager.
-The core console selection keeps
-its strict no-Python policy. Since 14 October 2026, unmodified original Fedora
-desktop RPMs may retain their Fedora-provided Python dependencies on the Fedora
-root. This exception does not cover project-owned code, recovery, initramfs or
-installers. The Plasma meta is independent of the strict console meta so these
-policies do not conflict during dependency resolution.
+The Fedora root may include normal distribution Python dependencies. The
+previous console-only restriction and desktop exception are historical profile
+metadata pending an upstream policy update; neither should cause Fedora
+packages to be rebuilt solely to remove Python.
 
 The application list was compared with the Nabu KDE manifest and image profile at
 [`03a5bdf09ce206410e7f7f1f97871110e66ffa82`](https://github.com/MCC45TR/Nabu-Fedora-Rawhide-Builder/tree/03a5bdf09ce206410e7f7f1f97871110e66ffa82).

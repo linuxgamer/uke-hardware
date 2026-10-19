@@ -7,8 +7,8 @@ It does not install unqualified firmware or Nabu hardware services. The current
 candidate does not establish tablet boot, a working console or hardware support.
 
 `make validate` checks source policy; `make srpm` creates a complete source RPM.
-COPR's isolated source factory uses `.copr/Makefile`. Pushes to `main` trigger
-native Rawhide AArch64 builds after the source webhook is enabled. Target closure
+Upstream's isolated COPR source factory uses `.copr/Makefile`. The fork's
+workflow does not request Rawhide COPR builds. Target closure
 and actual install/upgrade/removal results are recorded separately in `reports/`.
 No repository, kernel boot selection, Android partition or service preset is
 modified by this package's own payload; it has no scriptlets.
@@ -20,8 +20,9 @@ Nabu's core specification at commit `98188b595b42ba975f5bc238e596f330d3994ed8`
 was read as a role reference; its boot, calibration, panel, SSC and firmware
 payloads were not copied into this Uke package.
 
-Release 3 requires `senemos-native-runtime(libstdc++)`. The base Fedora C++
-library contained Python GDB helpers despite declaring no interpreter runtime;
-the complete-root gate rejected that environment. The native replacement is
-source-built with ABI/smoke checks. Interpreter conflicts remain necessary,
-and complete installed-root inspection is an independent required gate.
+Release 4 uses Fedora `libstdc++` and removes the earlier Python conflicts.
+Normal Fedora Python dependencies may be installed in the rootfs.
+Release 5 selects the locally built Linux 7.2.11 core, modules and DTBs on
+Fedora 44. The fork's separate `boot_a` builder supplies the boot image, so
+this selection does not pull in the upstream `boot_b` updater. Other Fedora
+targets retain their upstream kernel dependency.

@@ -1,7 +1,12 @@
 %global debug_package %{nil}
+%if 0%{?fedora} == 44
+%global uke_cxx_runtime libstdc++
+%else
+%global uke_cxx_runtime senemos-native-runtime(libstdc++)
+%endif
 Name: uke-boot-integration
 Version: 0.1.0
-Release: 21%{?dist}
+Release: 22%{?dist}
 Summary: Uke image configuration and native boot integration
 License: MIT
 URL: https://github.com/MCC45TR/uke-linux-hardware-support/tree/main/uke-boot
@@ -12,7 +17,7 @@ BuildRequires: pkgconfig(libsystemd) pkgconfig(wayland-client) pkgconfig(wayland
 BuildRequires: openssl-devel
 BuildRequires: pkgconfig(libdrm)
 BuildRequires: jq
-Requires: senemos-native-runtime(libstdc++)
+Requires: %{uke_cxx_runtime}
 Requires: kmod bash systemd NetworkManager openssh-server chrony
 Requires: util-linux-core coreutils grep
 Provides: uke-usb-gadget-ownership-api = 2
@@ -29,7 +34,7 @@ does not establish RAM/UFS/firmware handoff or physical tablet boot.
 %package -n uke-esp32-cdc
 Summary: Native ESP32-S3 CDC journal forwarding for the Uke Core debug profile
 Requires: %{name} = %{version}-%{release}
-Requires: systemd senemos-native-runtime(libstdc++)
+Requires: systemd %{uke_cxx_runtime}
 %description -n uke-esp32-cdc
 Native raw-TTY configuration and real-root journal forwarding to an explicitly
 configured ttyACM USB-host port. Core composition may apply the separate original
@@ -58,7 +63,7 @@ The console grants local root access over USB. USB networking stays optional.
 
 %package -n uke-wifi-factory
 Summary: Read-only Uke factory WLAN identity for NetworkManager
-Requires: systemd NetworkManager senemos-native-runtime(libstdc++)
+Requires: systemd NetworkManager %{uke_cxx_runtime}
 %description -n uke-wifi-factory
 Reads and validates each installation's factory WLAN address from its physical
 read-only persist partition. Publishes a private runtime NetworkManager default
@@ -67,7 +72,7 @@ The image must provide the protected persist mount and enable the service.
 
 %package -n uke-kernel-update
 Summary: Native checked installation of matched Uke stock-ABL kernel bundles
-Requires: senemos-native-runtime(libstdc++) openssl-libs systemd rpm
+Requires: %{uke_cxx_runtime} openssl-libs systemd rpm
 %description -n uke-kernel-update
 Validates an installed matched boot-v4 payload and module inventory before
 updating only the physical boot_b partition. Retains the running kernel modules
@@ -178,6 +183,9 @@ ln -s ../../../usr/bin/uke-reboot %{buildroot}/usr/local/sbin/reboot
 %{_prefix}/lib/dracut/modules.d/93uke-boot-guard
 
 %changelog
+* Mon Oct 19 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 0.1.0-22
+- Use the Fedora C++ runtime on Fedora 44, including the Wi-Fi factory helper.
+
 * Mon Oct 19 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.1.0-21
 - Use noatime and remount-ro error handling in the root filesystem template.
 - Preserve normal ext4 journaling and administrator fstab ownership.

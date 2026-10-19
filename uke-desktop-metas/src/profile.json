@@ -9,9 +9,9 @@
   "hardware_tested": false,
   "display_gpu_touch": "not-qualified",
   "automatic_session_or_display_configuration": false,
-  "runtime_policy": "native-and-shell-only-no-Python",
+  "runtime_policy": "Fedora distribution dependencies are allowed, including Python",
   "native_runtime_capabilities": [
-    "senemos-native-runtime(libstdc++)"
+    "libstdc++"
   ],
   "kde_application_policy": "Use original distribution packages; never clone, fork or rebuild KDE applications as Uke variants",
   "graphical_admission": "optional original Fedora package selection; dependency closure and tablet acceptance remain separate",

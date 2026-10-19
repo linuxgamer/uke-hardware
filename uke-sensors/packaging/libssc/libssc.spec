@@ -1,6 +1,6 @@
 Name: libssc
 Version: 0.4.4
-Release: 5%{?dist}
+Release: 6%{?dist}
 Summary: Native Qualcomm Sensor Core client library
 License: GPL-3.0-or-later
 URL: https://codeberg.org/DylanVanAssche/libssc
@@ -15,8 +15,12 @@ Patch3: 0004-light-data-type-and-validity.patch
 Patch4: 0005-preserve-nonzero-mount-matrix.patch
 Patch5: 0006-bounded-proximity-unpack-context.patch
 BuildRequires: bash gcc gcc-c++ meson ninja-build pkgconf-pkg-config
+%if 0%{?fedora} == 44
+BuildRequires: python3 meson
+%else
 BuildRequires: python3 = 3.15.0-1.fc46
 BuildRequires: meson = 1.12.1-2.fc46
+%endif
 BuildRequires: pkgconfig(glib-2.0) pkgconfig(gio-2.0) pkgconfig(qmi-glib)
 BuildRequires: pkgconfig(libprotobuf-c) protobuf-c-compiler protobuf-compiler
 ExclusiveArch: aarch64
@@ -66,6 +70,9 @@ if find %{buildroot} -type f \( -name '*.py' -o -iname '*python*' \) | grep -q .
 %{_libdir}/pkgconfig/libssc.pc
 
 %changelog
+* Mon Oct 19 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 0.4.4-6
+- Use Fedora 44 Python and Meson for the native SSC library build.
+
 * Sun Oct 18 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.4.4-5
 - Add bounded value-free context to existing proximity unpack warnings.
 - Retain the installed release-4 nonzero mount-matrix correction.

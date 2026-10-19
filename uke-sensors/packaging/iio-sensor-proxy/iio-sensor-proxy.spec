@@ -1,6 +1,6 @@
 Name: iio-sensor-proxy
 Version: 3.9
-Release: 6%{?dist}
+Release: 7%{?dist}
 Summary: Standard desktop sensor proxy with Qualcomm SSC support
 License: GPL-3.0-or-later
 URL: https://gitlab.freedesktop.org/hadess/iio-sensor-proxy
@@ -11,8 +11,12 @@ Source3: dual-light.cpp
 Patch0: 0001-initialize-before-dbus-name.patch
 Patch1: 0002-uke-dual-light.patch
 BuildRequires: gcc gcc-c++ meson ninja-build pkgconf-pkg-config systemd-rpm-macros
+%if 0%{?fedora} == 44
+BuildRequires: python3 meson
+%else
 BuildRequires: python3 = 3.15.0-1.fc46
 BuildRequires: meson = 1.12.1-2.fc46
+%endif
 BuildRequires: pkgconfig(udev) pkgconfig(systemd) pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(gudev-1.0) pkgconfig(polkit-gobject-1) pkgconfig(libssc)
 BuildRequires: libssc-devel >= 0.4.4-3
@@ -81,6 +85,9 @@ fi
 %{_datadir}/selinux/packages/uke-ssc.cil
 
 %changelog
+* Mon Oct 19 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 3.9-7
+- Use Fedora 44 Python and Meson when building the SSC sensor proxy.
+
 * Sat Oct 17 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 3.9-6
 - Combine calibrated Uke front/rear light through the existing SSC backend.
 
