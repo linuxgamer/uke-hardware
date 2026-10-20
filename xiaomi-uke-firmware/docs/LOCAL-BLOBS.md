@@ -9,6 +9,11 @@ the ignored `private/oem-blobs/` directory or in a private bundle. Per-device
 calibration and identifiers are read from the tablet's read-only `persist`
 partition at runtime and must never be bundled or uploaded.
 
+`touch/reference.bin` is a measured no-touch frame from one tablet, not a
+password, address or other device identifier. Its redistribution is a separate
+decision from OEM firmware licensing; its initial touch behavior on other
+units and panel variants still needs physical qualification.
+
 ## What changes between devices
 
 | Input | Scope | Notes |
