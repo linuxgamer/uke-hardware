@@ -1,14 +1,14 @@
 Name: uke-fedora44-oem-data
 Version: 3.0.303.0
-Release: 1%{?dist}
-Summary: Xiaomi Pad 7 SSC configuration and Bluetooth firmware from OS3.0.303.0
+Release: 2%{?dist}
+Summary: Xiaomi Pad 7 model firmware and SSC configuration from OS3.0.303.0
 License: LicenseRef-Proprietary
 Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
 
 %description
-Model-level SSC configuration and Bluetooth controller firmware for the
-Xiaomi Pad 7 Fedora 44 image recipe. Per-device persist data is excluded.
+Model-level SSC configuration, Bluetooth, WPSS, ADSP and Adreno firmware for
+the Xiaomi Pad 7 Fedora 44 image recipe. Per-device persist data is excluded.
 
 %prep
 %autosetup
@@ -22,13 +22,22 @@ mkdir -p %{buildroot}%{_prefix}/lib/firmware/qca
 install -m644 bt/image/msbtfw12.mbn bt/image/msbtfw12.tlv \
     bt/image/msbtfw12.ver bt/image/msnv12.bin \
     %{buildroot}%{_prefix}/lib/firmware/qca/
+cp -a firmware/. %{buildroot}%{_prefix}/lib/firmware/
 
 %files
 %{_datadir}/uke-sensors/odm
 %{_datadir}/uke-sensors/sns_reg.conf
-%{_prefix}/lib/firmware/qcom/uke/sensors/sns_tppe.so
-%{_prefix}/lib/firmware/qca/*
+%{_prefix}/lib/firmware/qcom/uke/sensors
+%{_prefix}/lib/firmware/qca
+%{_prefix}/lib/firmware/adsp.*
+%{_prefix}/lib/firmware/adsp_dtb.*
+%{_prefix}/lib/firmware/qca6750
+%{_prefix}/lib/firmware/qcom/gen71100_*
+%{_prefix}/lib/firmware/ath11k/WCN6750/hw1.0
 
 %changelog
+* Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 3.0.303.0-2
+- Add source-pinned WPSS, ADSP, WLAN board data and Adreno files.
+
 * Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 3.0.303.0-1
 - Package hash-pinned SSC configuration and Bluetooth firmware for local images.

@@ -5,6 +5,7 @@
 | UKE-INITIAL-001 | 2026-10-04 | Initial source/packaging scope established from the Nabu COPR inventory | Manifest checks only; package and physical validation open |
 | UKE-FIRMWARE-003 | 2026-10-20 | The OS3.0.303.0 touch, SSC and Bluetooth set is hash-pinned in the image source | Host hash check passed; redistribution record and device validation open |
 | UKE-FIRMWARE-004 | 2026-10-20 | Fedora 44 images stage SSC and Bluetooth model data in an RPM | Source review only; build and tablet validation open |
+| UKE-FIRMWARE-005 | 2026-10-20 | OS3.0.303.0 firmware replaces the older OS3.0.304.0 candidate set | Stock images and TWRP partitions matched; image build and tablet validation open |
 
 ## UKE-INITIAL-001
 
@@ -70,3 +71,21 @@
   impact is unknown. Redistribution terms remain to be recorded.
 - Next validation: build the RPMs, inspect DNF transaction and kernel firmware
   requests, then test SSC and Bluetooth on the tablet.
+
+## UKE-FIRMWARE-005 — OS3.0.303.0 remoteproc and GPU provenance
+
+- Date: 2026-10-20.
+- Environment: provided OS3.0.303.0 stock images and TWRP recovery on Xiaomi
+  Pad 7; all tablet operations were read-only.
+- Evidence: `manifests/fedora44-firmware-303.json` pins 74 files; the local
+  `vendor_a` and `odm_a` partition hashes matched the two images extracted
+  from the stock `super.img`. GPU GMU and SQE were read from vendor, ZAP from
+  odm. WPSS, ADSP, board and regulatory files were read from `NON-HLOS.bin`.
+- Finding: 36 of the 74 source files have hashes different from the older
+  OS3.0.304.0 candidate list, including ADSP, WPSS and GPU ZAP bytes.
+- Consequence: Fedora 44 image RPM must package the OS3.0.303.0 set as one
+  coherent source revision. The old candidate list remains historical evidence.
+- Uncertainty: no Fedora 44 image build or tablet boot with this set has run;
+  redistribution terms remain to be recorded.
+- Next validation: build the RPM, inspect firmware request paths and test
+  remoteproc, sensors, WLAN and accelerated GPU on Xiaomi Pad 7.

@@ -106,6 +106,17 @@
       "required_by": ["uke-bluetooth"],
       "per_device": false,
       "optional": true
+    },
+    {
+      "id": "fedora44-wpss-adsp-gpu",
+      "kind": "directory",
+      "path": "firmware",
+      "files": 74,
+      "tree_sha256": "75de1e8ca5d9b5261b37dab7ef9a8bec5eeebda944b0cc80e88940e94502ddf9",
+      "source": "NON-HLOS.bin + super.img:vendor_a,odm_a (OS3.0.303.0.WOZMIXM)",
+      "required_by": ["uke-fedora44-oem-data"],
+      "per_device": false,
+      "optional": false
     }
   ]
 }

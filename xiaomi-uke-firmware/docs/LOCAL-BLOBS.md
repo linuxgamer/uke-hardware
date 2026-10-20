@@ -9,6 +9,16 @@ this path by default and checks every file against `manifests/local-blobs.json`.
 Per-device calibration and identifiers are read from the tablet's read-only
 `persist` partition at runtime and are not bundled.
 
+The Fedora 44 image package also includes 74 pinned WPSS, ADSP, WLAN board
+and GPU files under `firmware/`. Their individual sources, paths, sizes and
+hashes are in `manifests/fedora44-firmware-303.json`; run
+`src/verify-fedora44-firmware.sh` to check the bundle. WPSS and ADSP came
+from the matching `NON-HLOS.bin`. GPU GMU/SQE came from `vendor_a` and ZAP
+from `odm_a`; both tablet partitions were byte-identical to their images
+extracted from the provided OS3.0.303.0 `super.img`. This is a source and
+identity check, not a tablet function test. The redistribution document is
+still pending in this checkout.
+
 `touch/reference.bin` is a measured no-touch frame from one tablet, not a
 password, address or other device identifier. Its redistribution is a separate
 decision from OEM firmware licensing; its initial touch behavior on other
@@ -45,6 +55,7 @@ payload/oem-os3.0.303.0/
   ssc/sns_reg.conf
   ssc/sns_tppe.so
   bt/image/                 # required by the Fedora 44 Bluetooth firmware RPM
+  firmware/                 # 74 Fedora 44 WPSS, ADSP, WLAN and GPU files
 ```
 
 `manifests/local-blobs.json` in this component lists every required path, size
@@ -148,23 +159,25 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
 - SSC: the file service expects `/usr/share/uke-sensors/odm`,
   `/usr/share/uke-sensors/sns_reg.conf` and
   `/usr/lib/firmware/qcom/uke/sensors/sns_tppe.so`.
-- Kernel firmware (WPSS/ADSP/GPU): keep using `stage-local.sh` and
-  `local-firmware-candidates.json`; the public `firmware-lock.json` stays
-  closed.
-- The Fedora 44 recipe does not install the staged SSC or optional Bluetooth
-  files. Other public source builds still use their own firmware inputs.
+- Fedora 44 firmware: `uke-fedora44-oem-data` includes the pinned SSC,
+  Bluetooth, WPSS, ADSP, WLAN board and GPU set. Its 74 remoteproc/GPU files
+  are checked against `fedora44-firmware-303.json` before RPM staging.
+  `stage-local.sh` and `local-firmware-candidates.json` remain historical
+  OS3.0.304.0 evaluation inputs; the generic `firmware-lock.json` stays closed.
+- Other source builds still use their own firmware inputs.
 
 ## 6. Earlier local bundle
 
 The owner keeps a pre-filled bundle at
 `private/uke-oem-blobs-OS3.0.303.0.WOZMIXM.tar.zst` with the same payload
-layout. The repository payload contains only `touch/`, `ssc/` and `bt/` data;
-the bundle's private notes and old publication marker were not copied.
+layout. The repository payload now adds the 74 stock firmware files to those
+earlier touch, SSC and Bluetooth inputs. The bundle's private notes and old
+publication marker were not copied.
 
 ## 7. Licensing
 
 The maintainer reports a redistribution grant covering the OEM inputs. Its
 terms have not yet been added to this checkout. Record and check the grant for
 the exact files before pushing the payload or uploading images. The broader
-WPSS, ADSP and GPU firmware admission remains separate; see
-`manifests/firmware-lock.json` and `docs/SOURCE-POLICY.md`.
+generic firmware admission remains separate from this Fedora 44 image RPM;
+see `manifests/firmware-lock.json` and `docs/SOURCE-POLICY.md`.
