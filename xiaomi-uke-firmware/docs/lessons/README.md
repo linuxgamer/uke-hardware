@@ -6,6 +6,7 @@
 | UKE-FIRMWARE-003 | 2026-10-20 | The OS3.0.303.0 touch, SSC and Bluetooth set is hash-pinned in the image source | Host hash check passed; redistribution record and device validation open |
 | UKE-FIRMWARE-004 | 2026-10-20 | Fedora 44 images stage SSC and Bluetooth model data in an RPM | Source review only; build and tablet validation open |
 | UKE-FIRMWARE-005 | 2026-10-20 | OS3.0.303.0 firmware replaces the older OS3.0.304.0 candidate set | Stock images and TWRP partitions matched; image build and tablet validation open |
+| UKE-FIRMWARE-006 | 2026-10-20 | Directory hash checks require a fixed sort locale | Reproduced the reported mismatch under ru_RU.UTF-8; source verification now passes in both locales |
 
 ## UKE-INITIAL-001
 
@@ -89,3 +90,20 @@
   redistribution terms remain to be recorded.
 - Next validation: build the RPM, inspect firmware request paths and test
   remoteproc, sensors, WLAN and accelerated GPU on Xiaomi Pad 7.
+
+## UKE-FIRMWARE-006 — locale-independent directory hashes
+
+- Date: 2026-10-20.
+- Environment: host checkout with `C.UTF-8` and `ru_RU.UTF-8` collation;
+  no RPM build or tablet execution.
+- Evidence: `verify-local-blobs.sh` reported SSC tree
+  `cf60815c55afeaabb97c704cc4d2fe56e4a23a4480e73fc5b8bb5e789451a340`
+  and firmware tree `6fbaa9121ca26fa1f646ac9a9a0b22d809784d46cedfb09561d50bcd6f7db346`
+  under `ru_RU.UTF-8`, matching the failed owner invocation. The manifest
+  digests use bytewise `C` ordering.
+- Finding: `sort -z` inherited the caller's locale while hashing directory
+  entries; identical files therefore produced different tree digests.
+- Consequence: set `LC_ALL=C` on the directory-name sort. No blob or manifest
+  bytes need to change.
+- Uncertainty: the RPM build and tablet behavior remain untested.
+- Next validation: rerun the Fedora 44 image command in the owner's locale.

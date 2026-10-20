@@ -29,7 +29,7 @@ done
 [[ -d $root ]] || { printf 'Blob root not found: %s\n' "$root" >&2; printf '%s\n' 'Check the firmware component checkout.' >&2; exit 2; }
 
 tree_hash() {
-    find "$1" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
+    find "$1" -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
 }
 
 cd "$root"
