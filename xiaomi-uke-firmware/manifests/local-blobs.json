@@ -3,10 +3,10 @@
   "device": "uke",
   "soc": "SM7675",
   "source_release": "OS3.0.303.0.WOZMIXM",
-  "blob_root": "private/oem-blobs",
+  "blob_root": "uke-linux-hardware-support/xiaomi-uke-firmware/payload/oem-os3.0.303.0",
   "public_upload_allowed": false,
   "per_device_data_included": false,
-  "notes": "Hashes only; no OEM bytes are stored in this repository. Per-device calibration and identifiers are read from the tablet's read-only persist partition at runtime and must never be bundled.",
+  "notes": "The hash-pinned touch, SSC and Bluetooth bytes are staged in payload/oem-os3.0.303.0. The touch reference is a measured no-touch frame from one tablet. Persist calibration and identifiers remain runtime-only. Redistribution grant text is pending in the checkout.",
   "runtime_only": [
     "persist/wlan/wlan_mac.bin",
     "persist/bluetooth/.bt_nv.bin",

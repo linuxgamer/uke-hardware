@@ -3,8 +3,10 @@
 File-level firmware provenance, acquisition and redistribution policy for Xiaomi Pad 7 / POCO Pad X1 (`uke`, SM7675).
 
 This component owns the file-level admission rules for the shared hardware
-support repository. The current lock admits no firmware bytes, so `make srpm`
-fails explicitly. A metadata-only RPM cannot substitute for device firmware.
+support repository. The Fedora 44 image builder uses the hash-pinned
+`payload/oem-os3.0.303.0/` touch set; SSC and Bluetooth data are staged there
+but not yet installed by that image recipe. The separate firmware RPM lock
+admits no WPSS, ADSP or GPU bytes, so `make srpm` still fails explicitly.
 The [15 October publication review](docs/COPR-PUBLICATION.md) identifies the
 local WPSS, ADSP and Adreno package families and the remaining source and
 redistribution checks. No local OEM firmware was uploaded by that review.
@@ -19,8 +21,8 @@ independent implementation and validation.
 
 ## Required validation
 
-- Record exact source/license/hash for every file.
-- Do not publish OEM blobs without file-level redistribution terms.
+- Record exact source, hash and redistribution terms for every file before
+  pushing the bundled payload or publishing an image.
 - Never publish unit calibration, persist data or security firmware.
 
 The first packaging target is Fedora Rawhide AArch64 in

@@ -1,13 +1,13 @@
-# Local OEM blobs for Uke
+# OEM image inputs for Uke
 
 19 October 2026. Target: Xiaomi Pad 7 / POCO Pad X1 (`uke`, SM7675), Fedora 44
-AArch64. Scope: how to obtain the device-local inputs the touch, SSC and
-Bluetooth paths need, without publishing OEM bytes.
+AArch64. Scope: provenance and validation of the touch, SSC and Bluetooth
+inputs staged with the Fedora 44 image source.
 
-The public repository stores **hashes and instructions only**. The bytes stay in
-the ignored `private/oem-blobs/` directory or in a private bundle. Per-device
-calibration and identifiers are read from the tablet's read-only `persist`
-partition at runtime and must never be bundled or uploaded.
+The prepared bytes are in `payload/oem-os3.0.303.0/`. The image builder uses
+this path by default and checks every file against `manifests/local-blobs.json`.
+Per-device calibration and identifiers are read from the tablet's read-only
+`persist` partition at runtime and are not bundled.
 
 `touch/reference.bin` is a measured no-touch frame from one tablet, not a
 password, address or other device identifier. Its redistribution is a separate
@@ -36,7 +36,7 @@ identity are **device** data.
 ## Layout
 
 ```
-private/oem-blobs/
+payload/oem-os3.0.303.0/
   touch/csot/normal.bin
   touch/csot/config.ini
   touch/reference.bin
@@ -45,12 +45,10 @@ private/oem-blobs/
   ssc/sns_reg.conf
   ssc/sns_tppe.so
   bt/image/                 # optional, only if the bluetooth partition is not mounted
-  MANIFEST.sha256
-  LOCAL-ONLY.txt
 ```
 
 `manifests/local-blobs.json` in this component lists every required path, size
-and SHA-256. It contains no OEM bytes.
+and SHA-256. It also records the source partition for each file.
 
 ## 1. Shared blobs from the stock OTA
 
@@ -137,8 +135,8 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
 
 ## 5. Build wiring
 
-- Fedora 44 image: `uke-fedora-builder/build-fedora44-rootfs.sh` requires
-  `--local-blobs private/oem-blobs` and runs `verify-local-blobs.sh` before
+- Fedora 44 image: `uke-fedora-builder/build-fedora44-rootfs.sh` uses the
+  bundled payload and runs `verify-local-blobs.sh` before
   composing. It copies the selected panel's `normal.bin`, `config.ini` and
   measured `reference.bin` into `/var/lib/uke-touch/` in every rootfs. CSOT is
   the default; `--touch-panel tm` selects the TM files. The same recipe is used
@@ -154,20 +152,19 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
   `local-firmware-candidates.json`; the public `firmware-lock.json` stays
   closed.
 - The Fedora 44 recipe does not install the staged SSC or optional Bluetooth
-  files. Other public source builds skip local-only data. Do not upload Fedora
-  44 images containing the touch files until the redistribution grant for
-  these exact files is recorded and checked.
+  files. Other public source builds still use their own firmware inputs.
 
-## 6. Private bundle
+## 6. Earlier local bundle
 
 The owner keeps a pre-filled bundle at
-`private/uke-oem-blobs-OS3.0.303.0.WOZMIXM.tar.zst` with the same layout,
-`MANIFEST.sha256` and `LOCAL-ONLY.txt`. It is local data: do not upload it or a
-link to it.
+`private/uke-oem-blobs-OS3.0.303.0.WOZMIXM.tar.zst` with the same payload
+layout. The repository payload contains only `touch/`, `ssc/` and `bt/` data;
+the bundle's private notes and old publication marker were not copied.
 
 ## 7. Licensing
 
-OEM firmware is proprietary. Public admission requires per-file redistribution
-terms and a reviewed license; see `manifests/firmware-lock.json` and
-`docs/SOURCE-POLICY.md`. Until that review is complete, keep the bytes local and
-distribute only this acquisition guide.
+The maintainer reports a redistribution grant covering the OEM inputs. Its
+terms have not yet been added to this checkout. Record and check the grant for
+the exact files before pushing the payload or uploading images. The broader
+WPSS, ADSP and GPU firmware admission remains separate; see
+`manifests/firmware-lock.json` and `docs/SOURCE-POLICY.md`.

@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# Verify device-local OEM blobs against manifests/local-blobs.json.
+# Verify the bundled OEM inputs against manifests/local-blobs.json.
 # Host-only: reads hashes, never downloads, mounts or writes device data.
 set -Eeuo pipefail
 
 component=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-repo=$(cd -- "$component/../.." && pwd)
 manifest=$component/manifests/local-blobs.json
-root=$repo/private/oem-blobs
+root=$component/payload/oem-os3.0.303.0
 
 usage() {
     printf '%s\n' "Usage: $0 [--manifest FILE] [--root DIR]" >&2
-    printf '%s\n' "  --root defaults to <repo>/private/oem-blobs" >&2
+    printf '%s\n' "  --root defaults to the bundled OS3.0.303.0 payload" >&2
     exit 2
 }
 
@@ -27,7 +26,7 @@ for command in jq sha256sum find sort xargs; do
     command -v "$command" >/dev/null 2>&1 || { printf 'Missing host command: %s\n' "$command" >&2; exit 2; }
 done
 [[ -f $manifest ]] || { printf 'Manifest not found: %s\n' "$manifest" >&2; exit 2; }
-[[ -d $root ]] || { printf 'Blob root not found: %s\n' "$root" >&2; printf '%s\n' 'Extract the private bundle or follow docs/LOCAL-BLOBS.md.' >&2; exit 2; }
+[[ -d $root ]] || { printf 'Blob root not found: %s\n' "$root" >&2; printf '%s\n' 'Check the firmware component checkout.' >&2; exit 2; }
 
 tree_hash() {
     find "$1" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1
