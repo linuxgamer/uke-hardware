@@ -4,7 +4,6 @@ Pin source revisions, licenses and file hashes before introducing payloads.
 OEM/community inventory describes hypotheses; physical behavior needs its own
 record. Never copy Nabu offsets, security firmware, calibration or driver wiring.
 Record host-only upstream build exceptions with exact package/tool pins.
-No Python program, runtime or dependency ships in a tablet package.
 
 Project-original documentation and scaffold files use the MIT license. Imported
 source keeps its upstream license and attribution; firmware licenses are
