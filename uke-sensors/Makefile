@@ -50,7 +50,7 @@ front-color-srpm:
 	cp packaging/uke-front-color/uke-front-color.spec "$$top/SPECS/"
 	rpmbuild -bs --nodeps --target aarch64 --define "_topdir $$top" "$$top/SPECS/uke-front-color.spec"
 touchscreen-srpm:
-	test -s src/upstream/nt36532-thp/nvt_touch_core.cpp
+	bash src/fetch-touch-core.sh
 	top="$$(realpath -m build/rpmbuild)"; mkdir -p "$$top"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
 	tar --sort=name --mtime=@1791024250 --owner=0 --group=0 --numeric-owner \
 	 --transform='s#^#uke-touchscreen-0.1.0/#' -cJf "$$top/SOURCES/uke-touchscreen-0.1.0.tar.xz" \
