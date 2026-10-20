@@ -68,7 +68,7 @@
       "kind": "directory",
       "path": "ssc/odm",
       "files": 68,
-      "tree_sha256": "cf60815c55afeaabb97c704cc4d2fe56e4a23a4480e73fc5b8bb5e789451a340",
+      "tree_sha256": "8b7838d9b6056572cd27291dcdf948f9d595ce34ac1153f93b37764e8dabaf9c",
       "source": "super.img:odm/etc/sensors/config",
       "required_by": ["uke-ssc-fileservice", "uke-adaptive-display"],
       "per_device": false,

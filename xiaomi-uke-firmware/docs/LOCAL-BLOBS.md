@@ -132,21 +132,24 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
 
 ## 5. Build wiring
 
-- Image: `./ukelinux.sh` and
-  `uke-fedora-builder/build-fedora44-rootfs.sh --hardware-rpms DIR`.
-  Run `verify-local-blobs.sh` before composing; a missing blob should fail the
-  local/image build, not produce a silent image.
-- Touch RPM: `uke-sensors` `touchscreen-srpm` / `touchscreen-rpm`, plus
-  `packaging/uke-local-touch-data.spec` built with `_sourcedir` pointing at
-  `private/oem-blobs/touch/csot`.
+- Fedora 44 local image: `uke-fedora-builder/build-fedora44-rootfs.sh` requires
+  `--local-blobs private/oem-blobs` and runs `verify-local-blobs.sh` before
+  composing. It copies the selected panel's `normal.bin`, `config.ini` and
+  unit-specific `reference.bin` into `/var/lib/uke-touch/` in the private
+  rootfs. CSOT is the default; `--touch-panel tm` selects the TM files.
+- Touch RPM: `uke-sensors` `touchscreen-srpm` / `touchscreen-rpm` builds the
+  public service without OEM bytes. The separate
+  `packaging/uke-local-touch-data.spec` remains an optional local RPM route;
+  the Fedora 44 rootfs recipe does not require it.
 - SSC: the file service expects `/usr/share/uke-sensors/odm`,
   `/usr/share/uke-sensors/sns_reg.conf` and
   `/usr/lib/firmware/qcom/uke/sensors/sns_tppe.so`.
 - Kernel firmware (WPSS/ADSP/GPU): keep using `stage-local.sh` and
   `local-firmware-candidates.json`; the public `firmware-lock.json` stays
   closed.
-- Public source builds stay green and skip local-only packages; only the
-  image/local-data build requires the blobs.
+- The Fedora 44 recipe does not install the staged SSC or optional Bluetooth
+  files. Public source builds skip all local-only data; images containing the
+  touch files remain private.
 
 ## 6. Private bundle
 
