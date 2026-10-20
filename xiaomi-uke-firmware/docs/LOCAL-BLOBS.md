@@ -137,11 +137,12 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
 
 ## 5. Build wiring
 
-- Fedora 44 local image: `uke-fedora-builder/build-fedora44-rootfs.sh` requires
+- Fedora 44 image: `uke-fedora-builder/build-fedora44-rootfs.sh` requires
   `--local-blobs private/oem-blobs` and runs `verify-local-blobs.sh` before
   composing. It copies the selected panel's `normal.bin`, `config.ini` and
-  unit-specific `reference.bin` into `/var/lib/uke-touch/` in the private
-  rootfs. CSOT is the default; `--touch-panel tm` selects the TM files.
+  measured `reference.bin` into `/var/lib/uke-touch/` in every rootfs. CSOT is
+  the default; `--touch-panel tm` selects the TM files. The same recipe is used
+  for local images and release candidates.
 - Touch RPM: `uke-sensors` `touchscreen-srpm` / `touchscreen-rpm` builds the
   public service without OEM bytes. The separate
   `packaging/uke-local-touch-data.spec` remains an optional local RPM route;
@@ -153,8 +154,9 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
   `local-firmware-candidates.json`; the public `firmware-lock.json` stays
   closed.
 - The Fedora 44 recipe does not install the staged SSC or optional Bluetooth
-  files. Public source builds skip all local-only data; images containing the
-  touch files remain private.
+  files. Other public source builds skip local-only data. Do not upload Fedora
+  44 images containing the touch files until the redistribution grant for
+  these exact files is recorded and checked.
 
 ## 6. Private bundle
 
