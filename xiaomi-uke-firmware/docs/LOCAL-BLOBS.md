@@ -44,7 +44,7 @@ payload/oem-os3.0.303.0/
   ssc/odm/                  # 68 files, including json.lst
   ssc/sns_reg.conf
   ssc/sns_tppe.so
-  bt/image/                 # optional, only if the bluetooth partition is not mounted
+  bt/image/                 # required by the Fedora 44 Bluetooth firmware RPM
 ```
 
 `manifests/local-blobs.json` in this component lists every required path, size

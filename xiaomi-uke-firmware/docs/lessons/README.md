@@ -4,6 +4,7 @@
 |---|---|---|---|
 | UKE-INITIAL-001 | 2026-10-04 | Initial source/packaging scope established from the Nabu COPR inventory | Manifest checks only; package and physical validation open |
 | UKE-FIRMWARE-003 | 2026-10-20 | The OS3.0.303.0 touch, SSC and Bluetooth set is hash-pinned in the image source | Host hash check passed; redistribution record and device validation open |
+| UKE-FIRMWARE-004 | 2026-10-20 | Fedora 44 images stage SSC and Bluetooth model data in an RPM | Source review only; build and tablet validation open |
 
 ## UKE-INITIAL-001
 
@@ -50,3 +51,22 @@
   startup are not established by this host check.
 - Next validation: record the grant terms for exact files, complete the other
   firmware inputs and test the resulting images on Xiaomi Pad 7.
+
+## UKE-FIRMWARE-004 — SSC and Bluetooth image package
+
+- Date: 2026-10-20.
+- Environment: Fedora 44 image source checkout; no RPM build or tablet run.
+- Evidence: `packaging/uke-fedora44-oem-data.spec`, `Makefile` target
+  `fedora44-image-data-srpm`, and the pinned `local-blobs.json` inventory.
+- Finding: the image package owns SSC configuration under
+  `/usr/share/uke-sensors`, `sns_tppe.so` under `/usr/lib/firmware/qcom/uke`,
+  and the Uke WCN6750 `ms*12` Bluetooth files under `/usr/lib/firmware/qca`.
+  This satisfies the
+  SSC file-service's declared file dependencies without bundling persist data.
+- Consequence: the Fedora 44 rootfs can install its existing SSC services and
+  Bluetooth address helper with a single model-level OEM data RPM.
+- Uncertainty: no RPM transaction or Xiaomi Pad 7 sensor/Bluetooth startup has
+  been checked. The bundled SSC `json.lst` names two absent JSON files; runtime
+  impact is unknown. Redistribution terms remain to be recorded.
+- Next validation: build the RPMs, inspect DNF transaction and kernel firmware
+  requests, then test SSC and Bluetooth on the tablet.
