@@ -8,8 +8,8 @@ cache=$root/source-cache/nt36532-thp/$commit
 
 prepared=$root/src/upstream/nt36532-thp
 if [[ -d $prepared ]] && (cd "$prepared" && printf '%s\n' \
-    '38eae0fd49885729d79bf718c4a47d16f96c9e60b9ac4aee5e5510b558924a96  nvt_touch_core.cpp' \
-    '6a0312308c22c4562205317078f01684153ca9a1f7a425f26ea96e003d59a1c8  nvt_touch_core.hpp' \
+    '7619b12a440be1f64cacb47b4b617fcfcf4486853822323f8d143c6e73aba9b1  nvt_touch_core.cpp' \
+    '473a2b7b71cea8f7143706ac563c6c9b81be1b31e51d841dec37a404c2c1ee94  nvt_touch_core.hpp' \
     'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE' \
     | sha256sum -c --status); then
     exit 0
