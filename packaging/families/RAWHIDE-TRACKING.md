@@ -60,7 +60,7 @@ Mesa 26.2.5 already includes AArch64 LLVM host-feature detection. The redundant
 local hunk is omitted, while the exact upstream function must still preserve
 every enabled and disabled LLVM feature. The Adreno identity patch remains
 independent. Patch, recipe-layout, ABI, build or payload failures remain visible
-and cannot silently remove a required delta. Binary no-Python gates remain.
+and cannot silently remove a required delta. Binary package checks remain.
 
 Additional source Release 4 adds a narrow optional-TCB correction to the original
 Fedora AccountsService recipe and a Turnip unsupported-KMS-fd correction. Account

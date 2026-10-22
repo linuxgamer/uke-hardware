@@ -7,7 +7,6 @@
   "public_upload_allowed": false,
   "redistribution_review_complete": false,
   "hardware_tested": false,
-  "python_target_payload": false,
   "source": {
     "release": "OS3.0.304.0.WOZMIXM",
     "url": "https://bigota.d.miui.com/OS3.0.304.0.WOZMIXM/uke_global-ota_full-OS3.0.304.0.WOZMIXM-user-16.0-f70cbc0556.zip",

@@ -15,7 +15,6 @@ for name in uke-core uke-hw uke-power uke-sensors uke-extras uke-additional uke-
     if grep -Ev '^(uke-[A-Za-z0-9+_.-]+|material-decoration)$' "$spec.names"; then exit 1; fi
     [[ $(rpmspec --target aarch64 -q --srpm --qf '%{NAME}' "$spec") == "$name" ]]
     ! grep -q '/__UKE_' "$spec"
-    ! grep -qE '^(Requires|Recommends):.*(python|pypy)' "$spec"
 done
 hw_spec=packaging/families/build/uke-hw/SPECS/uke-hw.spec
 if [[ -f $hw_spec ]]; then

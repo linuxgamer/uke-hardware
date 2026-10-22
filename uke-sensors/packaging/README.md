@@ -20,7 +20,7 @@ diagnostic does not establish a decoder fix or a CCT/proximity interaction.
   atomically. Symlink escapes and incomplete shell inputs are rejected.
 
 `make srpm PACKAGE=NAME` downloads the exact upstream archive below
-`referances/`, verifies SHA-256 and packages the attributed patches. COPR binary
+`source-cache/`, verifies SHA-256 and packages the attributed patches. COPR binary
 workers build without network access. Upstream C code retains its native build;
 new protocol fixtures use C++ where applicable.
 

@@ -4,7 +4,7 @@ set -Eeuo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 commit=34046210932d654a4c0df0121ecc31c008f8148c
 base=https://raw.githubusercontent.com/ianchb/xiaomi-sheng-thp/$commit
-cache=$root/referances/nt36532-thp/$commit
+cache=$root/source-cache/nt36532-thp/$commit
 
 prepared=$root/src/upstream/nt36532-thp
 if [[ -d $prepared ]] && (cd "$prepared" && printf '%s\n' \

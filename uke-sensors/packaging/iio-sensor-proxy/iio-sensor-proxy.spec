@@ -56,7 +56,6 @@ grep -q '^#define HAS_LIBSSC "1"' build/src/config.h
 %install
 DESTDIR=%{buildroot} meson install -C build --no-rebuild
 install -Dm644 %{SOURCE1} %{buildroot}%{_datadir}/selinux/packages/uke-ssc.cil
-if find %{buildroot} -type f \( -name '*.py' -o -iname '*python*' \) | grep -q .; then exit 1; fi
 
 %post
 if /usr/bin/selinuxenabled; then

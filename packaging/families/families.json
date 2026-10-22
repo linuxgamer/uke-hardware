@@ -115,7 +115,6 @@
       "requires": [],
       "suggests": [
         "uke-plymonth = 1.0.2-2%{?dist}",
-        "uke-orangefox-recovery",
         "material-decoration"
       ],
       "watch_paths": [
@@ -214,7 +213,6 @@
     "uke-boot-integration": "1.fc46",
     "uke-touchscreen": "1.fc46",
     "uke-plymonth": "2.fc46",
-    "uke-orangefox-recovery": "3.fc46",
     "upower": "10.fc46",
     "uke-adaptive-display": "2.fc46",
     "uke-firmware": "5.fc46",

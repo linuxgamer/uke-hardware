@@ -64,7 +64,7 @@ Nabu binary/geometry defaults cannot supply them. Detailed records are in
 [private engineering documentation](https://github.com/MCC45TR/uke-linux-docs).
 
 Run `make validate`, `make test-native` or `make srpm`. Source archives remain in
-`referances/`; package/host output is ignored under `build/`.
+`source-cache/`; package/host output is ignored under `build/`.
 
 The optional `uke-kernel-update` package validates matched installed kernel
 bundles. The Linux root retains its opt-in `boot_b` writer; version 1.1.0 adds
@@ -132,15 +132,6 @@ Release 7 disables readline editing and systemd terminal reset/hangup for the
 development ACM shell. A production-equivalent runtime override stopped in
 42 ms in two physical trials while retaining the bounded identity/TTY gate.
 Startup still takes about 15 seconds; bidirectional ACM data remains unqualified.
-
-Release 6 removes the system-wide Python conflicts from both native packages.
-A development exception covers Python in signed, original Fedora KDE
-dependencies. A compliant Python-free KDE release remains blocked. Neither package contains or requires Python, and project startup,
-service and test helpers remain native or shell. The default Core image and
-early initramfs retain their independent no-Python audits. A KDE composer must
-record the original signed package closure and audit its extracted payload;
-this packaging change alone does not authorize arbitrary Python applications
-or establish a working graphical session.
 
 The host-only `src/audit-kernel-inputs.sh EXTRACTED_ROOT REPORT_JSON` checks the
 installed kernel configuration and exact Uke DTB, traverses enabled nodes and

@@ -15,8 +15,6 @@ function check() {
         print "%meson_test"
         print "grep -q '^#define HAS_LIBSSC \"1\"' %{_vpath_builddir}/src/config.h"
     }
-    print "if find %{buildroot} -type f \\( -name '*.py' -o -name '*.pyc' -o -name '*.pyo' -o -name 'python*' \\) -print -quit | grep -q .; then exit 1; fi"
-    print "while IFS= read -r -d '' file; do if head -c 256 \"$file\" | LC_ALL=C grep -aE '^#!.*(python|pypy)'; then exit 1; fi; done < <(find %{buildroot} -type f -print0)"
 }
 /^(Source|Patch)999[6-9]:/ || /^%check([[:space:]]|$)/ { print "Unsupported upstream overlay layout" >"/dev/stderr"; bad=1; exit 1 }
 /^Release:/ { print "Release: " release "%{?dist}"; next }

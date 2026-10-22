@@ -39,7 +39,6 @@
   },
   "hardware_tested": false,
   "boot_tested": false,
-  "python_target_payload": false,
   "startup_recovery": {
     "package": "uke-boot-recovery",
     "timeout_seconds_from_kernel_boot": 180,

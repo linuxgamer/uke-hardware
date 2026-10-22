@@ -95,8 +95,6 @@ mkdir -p charging-fixture/tests/fixtures/upower
 cp %{SOURCE3} charging-fixture/tests/upower-fixture.sh
 cp %{SOURCE4} charging-fixture/tests/fixtures/upower/ac-net-discharge.umockdev
 LD_LIBRARY_PATH=%{_vpath_builddir}/libupower-glib timeout -k 5s 90s bash charging-fixture/tests/upower-fixture.sh %{_vpath_builddir}/src/upowerd
-# Installed Python and test scripts are forbidden in this overlay payload.
-if find %{buildroot} -type f \( -name '*.py' -o -name '*.pyc' -o -name 'python*' \) -print -quit | grep -q .; then exit 1; fi
 
 %ldconfig_scriptlets
 

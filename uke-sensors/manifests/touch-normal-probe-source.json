@@ -45,7 +45,6 @@
     "probe_image_sha256": "fe771c4a3ed38d2a26e359811c6c53fb8bec2b9c4f47e840dca9888c26b40d78",
     "added_host_package": "openssl-devel-4.0.3-1.fc46.aarch64",
     "headers_sha256": "421555f9b78004cc100432a4aea8930c02d82c30589316fcf03fd86e9db4e53b",
-    "target_dependency": "existing openssl-libs-4.0.3-1.fc46.aarch64; no package added",
-    "python_target_payload": false
+    "target_dependency": "existing openssl-libs-4.0.3-1.fc46.aarch64; no package added"
   }
 }

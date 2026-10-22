@@ -189,7 +189,7 @@ standard executable paths, library SONAMEs, D-Bus names, units and pkg-config
 interfaces remain upstream-compatible. Development packages retain exact
 runtime dependencies. Meta selections do not force optional diagnostics,
 recovery images, physical camera/audio controls or private calibration packages.
-The Plasma selection stays independent of the Python-free console selection.
+The Plasma selection stays independent of the console selection.
 
 Service renaming preserves admitted system-unit state through RPM scriptlets;
 a masked or disabled path is not newly enabled. SensorProxy's policy is restored

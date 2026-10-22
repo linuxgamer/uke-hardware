@@ -67,5 +67,5 @@ Host entry points are `make all`, `make test-native` and `make srpm`.
 The RPM source produces separate `uke-battery-observer`, `uke-charge-control`
 and `uke-offline-charge` packages for Fedora AArch64. The observer remains read-only. Other
 runtime package names and distribution targets are not implemented by this
-recipe. Python does not enter its target payload. Archives stay in
-`referances/`; original implementation lives in `src/`.
+recipe. Archives stay in
+`source-cache/`; original implementation lives in `src/`.

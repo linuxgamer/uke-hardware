@@ -68,7 +68,7 @@ while IFS= read -r package; do
     printf '%s\t%s\n' "$package" "${files[0]}" >>"$stage/inputs"
 done <"$stage/native-packages"
 while IFS=$'\t' read -r key url hash; do
-    input="$root/packaging/families/referances/inputs/$key.src.rpm"
+    input="$root/packaging/families/source-cache/inputs/$key.src.rpm"
     mkdir -p "$(dirname "$input")"
     if [[ ! -s $input ]]; then
         case "$key:$url" in

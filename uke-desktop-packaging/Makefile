@@ -5,10 +5,10 @@ SHELL := /bin/bash
 PACKAGE ?= plymouth-uke
 outdir ?= $(CURDIR)/build/srpm/$(PACKAGE)
 validate:
-	jq -e '.device == "uke" and .hardware_tested == false and .python_target_payload == false' manifests/component.json >/dev/null
+	jq -e '.device == "uke" and .hardware_tested == false' manifests/component.json >/dev/null
 	jq -e '(.commit|test("^[a-f0-9]{40}$$")) and (.sha256|test("^[a-f0-9]{64}$$")) and (.version|test("^[0-9]+[.][0-9]+$$")) and .hardware_specific==false and .hardware_tested==false' manifests/material-decoration.json >/dev/null
 	test "$$(sed -n 's/^%global upstream_commit //p' packaging/material-decoration/material-decoration.spec)" = "$$(jq -r .commit manifests/material-decoration.json)"
-	! grep -Eq '^(Requires|Recommends):.*(python|pypy|libpython|nabu)' packaging/*/*.spec
+	! grep -Eq '^(Requires|Recommends):.*(nabu)' packaging/*/*.spec
 	jq -e '.hardware_tested==false and (.packages|length==9) and all(.packages[]; (.sha256|test("^[a-f0-9]{64}$$")) and (.native_release|test("^[0-9]+([.][0-9]+)*$$")) and (.version|test("uke";"i")|not) and .name!="plasma-workspace" and .name!="dolphin" and .name!="uke-power-profile-backend")' manifests/native-runtime.json >/dev/null
 	test "$$(sha256sum src/native-runtime/fedora-exported-symbols.txt | cut -d ' ' -f1)" = "$$(jq -er .baseline.symbol_sha256 manifests/native-runtime.json)"
 	test "$$(wc -l < src/native-runtime/fedora-exported-symbols.txt)" = "$$(jq -er .baseline.symbol_count manifests/native-runtime.json)"
@@ -25,7 +25,7 @@ srpm: validate
 	fi
 	if test '$(PACKAGE)' = material-decoration; then
 		commit=$$(jq -er .commit manifests/material-decoration.json)
-		archive="$(CURDIR)/referances/material-decoration/$$commit.tar.gz"
+		archive="$(CURDIR)/source-cache/material-decoration/$$commit.tar.gz"
 		mkdir -p "$$(dirname "$$archive")"
 		if test ! -s "$$archive"; then
 			curl -fL --retry 3 "https://codeload.github.com/guiodic/material-decoration/tar.gz/$$commit" -o "$$archive.part"
@@ -54,7 +54,7 @@ track-stable:
 	commit=$$(jq -er '.sha | select(test("^[a-f0-9]{40}$$"))' build/tracking/commit.json)
 	version=$$(jq -er '.published_at' build/tracking/release.json | date -u -f - +%Y%m%d.%H%M%S)
 	[[ "$$version" > "$$(jq -er .version manifests/material-decoration.json)" ]] || { echo 'Stable source version did not advance' >&2; exit 1; }
-	archive="$(CURDIR)/referances/material-decoration/$$commit.tar.gz"
+	archive="$(CURDIR)/source-cache/material-decoration/$$commit.tar.gz"
 	mkdir -p "$$(dirname "$$archive")"
 	curl -fL --retry 3 "https://codeload.github.com/guiodic/material-decoration/tar.gz/$$commit" -o "$$archive.part"
 	tar -tzf "$$archive.part" > build/tracking/files.txt

@@ -5,10 +5,10 @@ SHELL := /bin/bash
 PACKAGE ?= libssc
 outdir ?= $(CURDIR)/build/srpm/$(PACKAGE)
 validate:
-	jq -e '.schema_version == 1 and .device == "uke" and .soc == "SM7675" and .hardware_tested == false and .python_target_payload == false and (.expected_packages | length > 0)' manifests/component.json >/dev/null
+	jq -e '.schema_version == 1 and .device == "uke" and .soc == "SM7675" and .hardware_tested == false and (.expected_packages | length > 0)' manifests/component.json >/dev/null
 	for spec in packaging/{libssc,iio-sensor-proxy,uke-ssc-fileservice}/*.spec; do
 		test -f "$$spec"
-		if grep -E '^(Version|Release):.*[Uu][Kk][Ee]|^Requires:[[:space:]]*(python|pypy|libpython)' "$$spec"; then exit 1; fi
+		if grep -E '^(Version|Release):.*[Uu][Kk][Ee]' "$$spec"; then exit 1; fi
 	done
 srpm: validate
 	case '$(PACKAGE)' in libssc|iio-sensor-proxy|uke-ssc-fileservice) ;; *) echo 'Unreviewed sensor package' >&2; exit 1;; esac
@@ -17,8 +17,8 @@ srpm: validate
 		exit 0
 	fi
 	case '$(PACKAGE)' in
-	libssc) archive=referances/libssc/libssc-v0.4.4.tar.gz; url=https://codeberg.org/DylanVanAssche/libssc/archive/v0.4.4.tar.gz; hash=716d6bd6b34d2d753060c6b54c9a87e34fae75b724c763bf9ef487efa3621587; name=libssc-v0.4.4.tar.gz;;
-	uke-ssc-fileservice) archive=referances/hexagonrpc-write/source.tar.gz; url=https://api.github.com/repos/linux-msm/hexagonrpc/tarball/510c87e5c89026ee2bd2034776fc4d15994f353d; hash=ed7b0e704a5e8c20b77b013b4b34f3cddbe41d4cf546edc73f029501f7ebdec5; name=hexagonrpc-510c87e5.tar.gz;;
+	libssc) archive=source-cache/libssc/libssc-v0.4.4.tar.gz; url=https://codeberg.org/DylanVanAssche/libssc/archive/v0.4.4.tar.gz; hash=716d6bd6b34d2d753060c6b54c9a87e34fae75b724c763bf9ef487efa3621587; name=libssc-v0.4.4.tar.gz;;
+	uke-ssc-fileservice) archive=source-cache/hexagonrpc-write/source.tar.gz; url=https://api.github.com/repos/linux-msm/hexagonrpc/tarball/510c87e5c89026ee2bd2034776fc4d15994f353d; hash=ed7b0e704a5e8c20b77b013b4b34f3cddbe41d4cf546edc73f029501f7ebdec5; name=hexagonrpc-510c87e5.tar.gz;;
 	esac
 	mkdir -p "$$(dirname "$$archive")"
 	if test ! -s "$$archive"; then curl -fL --retry 3 --connect-timeout 20 "$$url" -o "$$archive.part"; mv "$$archive.part" "$$archive"; fi
@@ -85,9 +85,9 @@ test-cache:
 
 # Host qualification only; this target neither installs nor starts a tablet daemon.
 test-hexagonrpc:
-	printf '%s\n' 'ed7b0e704a5e8c20b77b013b4b34f3cddbe41d4cf546edc73f029501f7ebdec5  referances/hexagonrpc-write/source.tar.gz' | sha256sum -c -
+	printf '%s\n' 'ed7b0e704a5e8c20b77b013b4b34f3cddbe41d4cf546edc73f029501f7ebdec5  source-cache/hexagonrpc-write/source.tar.gz' | sha256sum -c -
 	mkdir -p build/hexagonrpc-source build/hexagonrpc
-	tar -xf referances/hexagonrpc-write/source.tar.gz --strip-components=1 -C build/hexagonrpc-source
+	tar -xf source-cache/hexagonrpc-write/source.tar.gz --strip-components=1 -C build/hexagonrpc-source
 	for patch in patches/hexagonrpc/*.patch; do patch --batch --fuzz=0 -p1 -d build/hexagonrpc-source < "$$patch" || exit; done
 	(cd build/hexagonrpc-source && $(CC) -std=gnu11 -O2 -Wall -Wextra -Werror -Wno-unused-parameter -DHEXAGONRPC_VERBOSE -I include libhexagonrpc/*.c libhexagonrpc/interface/*.c hexagonrpcd/*.c hexagonrpcd/interface/*.c -lsystemd -o ../hexagonrpc/hexagonrpcd)
 	(cd build/hexagonrpc-source && $(CC) -std=gnu11 -O2 -Wall -Wextra -Werror -Wno-unused-parameter -I include tests/test_hexagonrpc.c libhexagonrpc/hexagonrpc.c -o ../hexagonrpc/test-rpc)

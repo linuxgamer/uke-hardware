@@ -241,11 +241,8 @@ are reported separately from protocol qualification. It preserves raw family
 USB/wire6 and normalized legacy class, without treating raw9+/vendor codes as
 modern AVS, BrickID, QC or MI versions. Manufacturer receiver declarations for
 QC2/QC3/QC3+, PD2/PD3 and MI FC2.0 are explicitly separate and never become active
-support claims. No new voltage/current negotiation command is added. See the
-kernel owner's `docs/CHARGING-PROTOCOLS-20261018.md` for exact source comparisons,
-UCSI capability-versus-session limits, regional FAQ conflict and staged adapter
-requirements. Firmware owns negotiation; full protocol/physical acceptance is
-still required.
+support claims. No new voltage/current negotiation command is added. Firmware
+owns negotiation; full protocol and physical acceptance is still required.
 
 `uke-charge-control.service` and `uke-charge-automatic.service` are disabled by
 preset, have no automatic restart, and require the per-boot record. The automatic

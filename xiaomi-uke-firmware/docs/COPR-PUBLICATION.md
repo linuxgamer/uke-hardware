@@ -59,13 +59,13 @@ private touch preparation assets. It does not add public firmware admission.
 For a local evaluation, first extract the pinned official OTA using the
 host-only tool revision recorded in
 [`oem-wifi-source.json`](../manifests/oem-wifi-source.json). Keep that original
-archive and extraction beneath `referances/`. Provide the modem extraction's
+archive and extraction beneath `source-cache/`. Provide the modem extraction's
 `files/` directory, containing `adsp/` and `qca6750/`, and the retained GPU
 directory containing the three `gen71100` files. Then stage the exact selection:
 
 ```bash
 mkdir -p build
-make stage-local MODEM_FILES=referances/oem-extract/files GPU_FILES=referances/device-gpu OUTPUT=build/local-firmware
+make stage-local MODEM_FILES=source-cache/oem-extract/files GPU_FILES=source-cache/device-gpu OUTPUT=build/local-firmware
 ```
 
 This host command checks every byte count and SHA-256, rejects an existing
@@ -94,7 +94,7 @@ distribution `qcom-firmware` update.
 After review, use the existing host audit:
 
 ```bash
-make audit-admission LOCK=reviewed-lock.json ARCHIVE=referances/source-tree REQUESTS=kernel-inputs.json
+make audit-admission LOCK=reviewed-lock.json ARCHIVE=source-cache/source-tree REQUESTS=kernel-inputs.json
 ```
 
 The reviewed lock must contain actual admitted files. A source-only record or

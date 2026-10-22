@@ -24,7 +24,7 @@ install -d %{buildroot}%{_datadir}/plymouth/themes/senemos-uke
 install -m644 src/plymouth-uke/* %{buildroot}%{_datadir}/plymouth/themes/senemos-uke/
 %check
 test -s %{buildroot}%{_datadir}/plymouth/themes/senemos-uke/plymouth-uke.script
-! grep -Eq '(DeviceScale|/dev/|nabu|python)' %{buildroot}%{_datadir}/plymouth/themes/senemos-uke/*
+! grep -Eq '(DeviceScale|/dev/|nabu)' %{buildroot}%{_datadir}/plymouth/themes/senemos-uke/*
 %files
 %license LICENSE
 %doc README.md

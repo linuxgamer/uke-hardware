@@ -12,14 +12,14 @@ jq -e '
   (.reference.commit | test("^[a-f0-9]{40}$")) and
   (.packages | length == (unique | length)) and
   all(.packages[]; test("^[A-Za-z0-9][A-Za-z0-9+_.-]*$") and
-      (test("nabu|uke|python|pypy"; "i") | not)) and
+      (test("nabu|uke"; "i") | not)) and
   (["plasma-discover-packagekit", "PackageKit", "kio-admin", "dolphin-plugins", "chromium", "plasma-login-manager", "kcm-plasmalogin"] - .packages | length == 0)
 ' "$profile" >/dev/null
 diff -u <(jq -r '.packages[]' "$profile" | LC_ALL=C sort) \
   <(awk '/^# BEGIN ORIGINAL FEDORA PLASMA PACKAGES$/ {selection=1; next}
          /^# END ORIGINAL FEDORA PLASMA PACKAGES$/ {selection=0}
          selection && /^Requires:/ {print $2}' "$spec" | LC_ALL=C sort)
-# The console meta conflicts with Python; Plasma must not pull it indirectly.
+# Keep the desktop selection separate from console package policy.
 if awk '/^%package -n uke-kde-plasma-meta$/ {selection=1; next}
        /^%description -n uke-kde-plasma-meta$/ {selection=0}
        selection && /^(Requires|Recommends):.*uke-(core-meta|desktop-metas)/ {bad=1}

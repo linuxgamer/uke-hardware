@@ -1,18 +1,5 @@
 [
   {
-    "family": "uke-extras",
-    "name": "uke-orangefox-recovery",
-    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11178800/uke-orangefox-recovery-12.0~preview3.20261010-1.src.rpm",
-    "sha256": "38b38f258d7cb6deaed3e103c7a740eaa82f6727a1295dccf5b615be56c2c4de",
-    "build": 11166935,
-    "original_url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test/srpm-builds/11166935/uke-orangefox-recovery-12.0~preview3.20261010-1.src.rpm",
-    "original_build": 11166935,
-    "archive_build": 11178800,
-    "archive_method": "project-fork",
-    "original_sha256": "77d979b962b7f252c9bf6387b3db510a1d4cff980d8acd4c30d489d6c2088f76",
-    "original_payload_sha256": "782f7fee10242b5d4672426417b8b3693487fc95d307b40bb4daee3fc848e638"
-  },
-  {
     "family": "uke-hw",
     "name": "uke-touchscreen",
     "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11179043/uke-touchscreen-0.1.0-13.fc46.src.rpm",

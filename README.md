@@ -18,7 +18,6 @@ This repository contains platform services, sensors, firmware packaging, boot in
 | `uke-core-meta` | Packages for the base system |
 | `uke-desktop-metas` | Desktop package selections |
 | `uke-desktop-packaging` | Native desktop libraries, theme and decoration |
-| `uke-orangefox-packaging` | Recovery image packaging |
 | `xiaomi-uke-firmware` | Firmware source and licensing records |
 | `uke-hardware-provenance` | Records of hardware source material |
 

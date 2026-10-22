@@ -5,8 +5,8 @@ fixture=$(mktemp -d)
 trap 'rm -rf -- "$fixture"' EXIT
 cp "$project/Makefile" "$fixture/"
 cp -r "$project/manifests" "$project/packaging" "$fixture/"
-mkdir -p "$fixture/referances/libssc"
-printf 'Invalid upstream archive fixture\n' > "$fixture/referances/libssc/libssc-v0.4.4.tar.gz"
+mkdir -p "$fixture/source-cache/libssc"
+printf 'Invalid upstream archive fixture\n' > "$fixture/source-cache/libssc/libssc-v0.4.4.tar.gz"
 if make -s -C "$fixture" srpm PACKAGE=libssc > "$fixture/rejected.log" 2>&1; then
     echo 'Corrupt archive accepted' >&2; exit 1
 fi

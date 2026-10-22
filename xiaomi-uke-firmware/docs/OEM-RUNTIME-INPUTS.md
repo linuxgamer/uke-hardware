@@ -70,7 +70,7 @@ files used `mcopy` from the FAT image. No OEM script or extracted program ran.
 ## Host preparation
 
 Keep the original OTA, extracted subset and any resulting archive below this
-component's ignored `referances/`. The extracted subset has the same
+component's ignored `source-cache/`. The extracted subset has the same
 `ssc/`, `touch/` and `bt/` source layout as the supplied archive, without
 the private touch reference.
 
@@ -78,7 +78,7 @@ From this component, with an extracted `oem-blobs/` tree:
 
 ```bash
 mkdir -p build
-make stage-oem-local OEM_FILES=referances/oem-304/oem-blobs OUTPUT=build/oem-runtime-304
+make stage-oem-local OEM_FILES=source-cache/oem-304/oem-blobs OUTPUT=build/oem-runtime-304
 (cd build/oem-runtime-304 && sha256sum -c --strict MANIFEST.sha256)
 ```
 
@@ -114,8 +114,8 @@ The local packaging target builds one `xiaomi-uke-firmware`
 3.0.304.0-1.local data RPM from both verified staging profiles:
 
 ```bash
-make local-rpms OEM_FILES=referances/oem-304/oem-blobs \
-  MODEM_FILES=referances/oem-304/files GPU_FILES=referances/qualified-gpu
+make local-rpms OEM_FILES=source-cache/oem-304/oem-blobs \
+  MODEM_FILES=source-cache/oem-304/files GPU_FILES=source-cache/qualified-gpu
 ```
 
 The noarch RPM contains 217 payload files and no scriptlets, applications,

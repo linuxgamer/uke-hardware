@@ -4,7 +4,7 @@ SHELL := /bin/bash
 .PHONY: validate srpm test-native test-plugin
 outdir ?= $(CURDIR)/build/srpm
 validate:
-	jq -e '.schema_version == 1 and .device == "uke" and .soc == "SM7675" and .hardware_tested == false and .python_target_payload == false and (.expected_packages | index("uke-adaptive-display") != null)' manifests/component.json >/dev/null
+	jq -e '.schema_version == 1 and .device == "uke" and .soc == "SM7675" and .hardware_tested == false and (.expected_packages | index("uke-adaptive-display") != null)' manifests/component.json >/dev/null
 	bash tests/adaptive-display.sh
 srpm: validate
 	top="$$(realpath -m '$(outdir)/rpmbuild')"

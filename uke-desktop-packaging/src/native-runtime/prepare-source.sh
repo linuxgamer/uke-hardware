@@ -9,7 +9,7 @@ version=$(jq -er .version <<< "$profile")
 release=$(jq -er .release <<< "$profile")
 native_release=$(jq -er .native_release <<< "$profile")
 source_name=$(jq -er '.source_name // .name' <<< "$profile")
-archive="$project/referances/fedora-srpms/$source_name-$version-$release.src.rpm"
+archive="$project/source-cache/fedora-srpms/$source_name-$version-$release.src.rpm"
 mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS} "$(dirname "$archive")"
 if [[ ! -s $archive ]]; then
     curl -fL --retry 3 --proto '=https' --proto-redir '=https' "https://kojipkgs.fedoraproject.org/packages/$source_name/$version/$release/src/$source_name-$version-$release.src.rpm" -o "$archive.part"
@@ -112,9 +112,6 @@ if [[ $name == mesa ]]; then
         /^BuildRequires:.*python3-pyyaml/ { print "BuildRequires: python3-pyyaml = 6.0.3-6.fc45"; next }
         /^BuildRequires:.*llvm-devel/ { print "BuildRequires: llvm-devel = 23.1.3-1.fc46"; next }
         /^%files filesystem/ {
-            print "# No build tool or Python payload may reach a binary subpackage."
-            print "if find %{buildroot} -type f \\( -name \"*.py\" -o -name \"*.pyc\" -o -name \"*.pyo\" -o -name \"python[0-9]*\" \\) -print | grep .; then exit 1; fi"
-            print "while IFS= read -r -d \"\" file; do if head -c 256 \"$file\" | LC_ALL=C grep -aE \"^#!.*(python|pypy)\"; then exit 1; fi; done < <(find %{buildroot} -type f -print0)"
             print "%check"
             print "bash %{SOURCE9996} \"$PWD\" --patched"
             print "%{_vpath_builddir}/uke-mesa-host-features"
@@ -170,10 +167,7 @@ fi
 awk -v name="$name" -v release="$native_release" -v cleanup="$cleanup" '
     BEGIN { print "%global debug_package %{nil}" }
     function finish_install() {
-        print "# Senemos Uke: keep Python outside every target payload."
         print cleanup
-        print "if find %{buildroot} -type f \\( -name \"*.py\" -o -name \"*.pyc\" -o -name \"*.pyo\" -o -name \"python[0-9]*\" \\) -print | grep .; then exit 1; fi"
-        print "while IFS= read -r -d \"\" file; do if head -c 256 \"$file\" | LC_ALL=C grep -aE \"^#!.*(python|pypy)\"; then exit 1; fi; done < <(find %{buildroot} -type f -print0)"
     }
     /^Release:/ { print "Release: " release "%{?dist}"; next }
     /^Source0:/ && name=="libaccounts-glib" { print; print "Patch9999: 0001-fix-uncommitted-changes-cleanup.patch"; next }
@@ -223,15 +217,14 @@ awk -v name="$name" -v release="$native_release" -v cleanup="$cleanup" '
     /^%changelog/ {
         print
         print "* Mon Oct 05 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - %{version}-" release
-        print "- Rebuild the exact Fedora source with a Python-free native runtime payload."
+        print "- Rebuild the exact Fedora source with the reviewed native runtime payload."
         exit
     }
     { print }
     END { if (install) finish_install() }
 ' "$spec" > "$top/SPECS/$name.spec"
-# The original complete source RPM is retained below referances; only the
+# The original complete source RPM is retained below source-cache; only the
 # inspected generated specification controls this development candidate.
 mv "$spec" "$top/SPECS/$name.fedora-original.spec"
 [[ $(grep -c '^%install' "$top/SPECS/$name.spec") == 1 ]]
-grep -F 'Senemos Uke: keep Python outside every target payload.' "$top/SPECS/$name.spec" >/dev/null
 build_source

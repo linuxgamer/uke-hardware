@@ -27,7 +27,7 @@ Installed package capabilities do not establish which kernel is running.
 
 The [development COPR](https://copr.fedorainfracloud.org/coprs/mcc45tr/uke-linux-test/)
 and [package catalog](https://github.com/MCC45TR/uke-linux-docs/blob/main/docs/PACKAGE-HUB.md)
-track each independently admitted component. Source archives stay in `referances/`.
+track each independently admitted component. Source archives stay in `source-cache/`.
 Nabu's core specification at commit `98188b595b42ba975f5bc238e596f330d3994ed8`
 was read as a role reference; its boot, calibration, panel, SSC and firmware
 payloads were not copied into this Uke package.

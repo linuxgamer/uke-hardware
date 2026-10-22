@@ -35,7 +35,7 @@ query() {
 }
 cp "$manifest" "$stage/new.json"
 jq -er '.packages[]|[.name,(.source_name // .name),.binary_name]|@tsv' "$manifest" >"$stage/packages"
-cache="$root/uke-desktop-packaging/referances/fedora-srpms"
+cache="$root/uke-desktop-packaging/source-cache/fedora-srpms"
 mkdir -p "$cache"
 while IFS=$'\t' read -r name source_name package; do
     query "$package"

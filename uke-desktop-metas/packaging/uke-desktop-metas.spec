@@ -19,7 +19,7 @@ Obsoletes: kde-plasma-uke-meta < 1.0.0-7
 Conflicts: kde-plasma-uke-meta
 Summary: Original Fedora Plasma applications for the Uke development platform
 Requires: (senemos-uke-linux-kernel-mainline >= 7.2.11-16 or senemos-uke-linux-kernel-mainline-singleboot >= 7.2.11-16)
-# Keep this optional selection independent of the Python-free console meta.
+# Keep this optional selection independent of the console package.
 # BEGIN ORIGINAL FEDORA PLASMA PACKAGES
 Requires: PackageKit
 Requires: ark

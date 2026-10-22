@@ -41,6 +41,5 @@
   },
   "hardware_tested": false,
   "boot_tested": false,
-  "python_target_payload": false,
   "source_directory": "uke-platform-runtime"
 }

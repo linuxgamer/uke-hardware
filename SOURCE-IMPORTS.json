@@ -57,11 +57,6 @@
       "component": "uke-desktop-packaging",
       "imported_commit": "4e4efac3958abd02423bf725bbf29545c3a2e01d",
       "historical_repository": "https://github.com/MCC45TR/uke-desktop-packaging"
-    },
-    {
-      "component": "uke-orangefox-packaging",
-      "imported_commit": "98fefcb78c2f356f841024b89a5ba2b90fe2db3c",
-      "historical_repository": "https://github.com/MCC45TR/uke-orangefox-packaging"
     }
   ]
 }

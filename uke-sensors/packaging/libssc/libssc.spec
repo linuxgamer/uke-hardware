@@ -58,7 +58,6 @@ g++ -std=c++20 -UNDEBUG -Wall -Wextra -Werror -pthread -I src %{SOURCE2} \
 ./proximity-context-test
 bash %{SOURCE4} src/libssc-sensor-proximity.c
 SANITIZE=1 bash %{SOURCE4} src/libssc-sensor-proximity.c
-if find %{buildroot} -type f \( -name '*.py' -o -iname '*python*' \) | grep -q .; then exit 1; fi
 
 %files
 %license LICENSE
