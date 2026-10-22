@@ -1,15 +1,14 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -Eeuo pipefail -c
 .ONESHELL:
-.PHONY: validate srpm verify-local-blobs verify-fedora44-firmware fedora44-image-data-srpm
+.PHONY: validate srpm verify-fedora44-oem-304 fedora44-image-data-srpm
 validate:
 	jq -e '.schema_version == 1 and .device == "uke" and .soc == "SM7675" and .hardware_tested == false and .python_target_payload == false and (.expected_packages | length > 0)' manifests/component.json >/dev/null
 	jq -e '.schema_version==1 and .device=="uke" and (.admitted_files|length)==0 and .firmware_blob_package_ready==false' manifests/firmware-lock.json >/dev/null
 	bash -n src/audit-admission.sh
 	bash -n src/stage-local.sh
 	jq -e '.schema_version==1 and .device=="uke" and .soc=="SM7675" and .public_upload_allowed==false and (.files|length)==74 and all(.files[]; .redistribution_review_complete==false)' manifests/local-firmware-candidates.json >/dev/null
-	jq -e '.schema_version==1 and .device=="uke" and .public_upload_allowed==false and .per_device_data_included==false and (.entries|length)>0' manifests/local-blobs.json >/dev/null
-	bash -n src/verify-local-blobs.sh
+	bash -n src/verify-fedora44-oem-304.sh
 	jq -e '.schema_version==1 and .device=="uke" and .soc=="SM7675" and .source.release=="OS3.0.304.0.WOZMIXM" and .public_upload_allowed==false and .redistribution_review_complete==false and .hardware_tested==false and .python_target_payload==false and (.missing_sensor_configs|sort)==["ak7323.json","sm7675_ak7323.json"] and (.files|length)==143 and all(.files[]; .source_group=="oem" and .redistribution_review_complete==false)' manifests/oem-runtime-source.json >/dev/null
 srpm:
 	@echo 'No firmware payload is admitted for public source packaging; complete file-level redistribution gates.' >&2
@@ -66,20 +65,15 @@ copr-srpm: local-rpms
 	cp packaging/uke-firmware.spec "$$top/SPECS/"
 	rpmbuild -bs --define "_topdir $$top" --define '_buildhost uke-copr-source' "$$top/SPECS/uke-firmware.spec"
 	install -m644 "$$top/SRPMS/"*.src.rpm '$(outdir)/'
-.PHONY: verify-local-blobs
-verify-local-blobs:
-	bash src/verify-local-blobs.sh
-verify-fedora44-firmware:
-	bash src/verify-fedora44-firmware.sh
-fedora44-image-data-srpm: verify-local-blobs verify-fedora44-firmware
-	@set -Eeuo pipefail; \
-	root=payload/oem-os3.0.303.0; \
-	test -d "$$root/bt/image" && test -f "$$root/bt/image/msbtfw12.mbn" && test -f "$$root/bt/image/msnv12.bin"; \
-	top="$$(realpath -m build/fedora44-image-data/rpmbuild)"; \
-	mkdir -p "$$top"/{SOURCES,SPECS,SRPMS}; \
+verify-fedora44-oem-304:
+	bash src/verify-fedora44-oem-304.sh
+fedora44-image-data-srpm: verify-fedora44-oem-304
+	root=payload/oem-os3.0.304.0
+	top="$$(realpath -m build/fedora44-image-data/rpmbuild)"
+	mkdir -p "$$top"/{SOURCES,SPECS,SRPMS}
 	tar -C "$$root" --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
-	    --transform='s#^#uke-fedora44-oem-data-3.0.303.0/#' \
-	    -czf "$$top/SOURCES/uke-fedora44-oem-data-3.0.303.0.tar.gz" ssc bt firmware; \
-	cp packaging/uke-fedora44-oem-data.spec "$$top/SPECS/"; \
+	    --transform='s#^#uke-fedora44-oem-data-3.0.304.0/#' \
+	    -czf "$$top/SOURCES/uke-fedora44-oem-data-3.0.304.0.tar.gz" ssc bt firmware
+	cp packaging/uke-fedora44-oem-data.spec "$$top/SPECS/"
 	rpmbuild -bs --nodeps --target noarch --define "_topdir $$top" \
 	    "$$top/SPECS/uke-fedora44-oem-data.spec"

@@ -4,20 +4,19 @@
 AArch64. Scope: provenance and validation of the touch, SSC and Bluetooth
 inputs staged with the Fedora 44 image source.
 
-The prepared bytes are in `payload/oem-os3.0.303.0/`. The image builder uses
-this path by default and checks every file against `manifests/local-blobs.json`.
+The prepared bytes are in `payload/oem-os3.0.304.0/`. The image builder uses
+this path by default and checks the model files against
+`manifests/oem-runtime-source.json` and `manifests/local-firmware-candidates.json`.
 Per-device calibration and identifiers are read from the tablet's read-only
 `persist` partition at runtime and are not bundled.
 
 The Fedora 44 image package also includes 74 pinned WPSS, ADSP, WLAN board
 and GPU files under `firmware/`. Their individual sources, paths, sizes and
-hashes are in `manifests/fedora44-firmware-303.json`; run
-`src/verify-fedora44-firmware.sh` to check the bundle. WPSS and ADSP came
-from the matching `NON-HLOS.bin`. GPU GMU/SQE came from `vendor_a` and ZAP
-from `odm_a`; both tablet partitions were byte-identical to their images
-extracted from the provided OS3.0.303.0 `super.img`. This is a source and
-identity check, not a tablet function test. The redistribution document is
-still pending in this checkout.
+hashes are in `manifests/local-firmware-candidates.json`; run
+`src/verify-fedora44-oem-304.sh` to check the complete bundle. WPSS and ADSP
+come from the matching `NON-HLOS.bin`; the manifest records the exact GPU file
+hashes. This checks file identity, not tablet function. The redistribution
+document is still pending in this checkout.
 
 `touch/reference.bin` is a measured no-touch frame from one tablet, not a
 password, address or other device identifier. Its redistribution is a separate
@@ -46,7 +45,7 @@ identity are **device** data.
 ## Layout
 
 ```
-payload/oem-os3.0.303.0/
+payload/oem-os3.0.304.0/
   touch/csot/normal.bin
   touch/csot/config.ini
   touch/reference.bin
@@ -58,13 +57,14 @@ payload/oem-os3.0.303.0/
   firmware/                 # 74 Fedora 44 WPSS, ADSP, WLAN and GPU files
 ```
 
-`manifests/local-blobs.json` in this component lists every required path, size
-and SHA-256. It also records the source partition for each file.
+The two OS3.0.304.0 manifests list the model files, their source partitions,
+sizes and SHA-256 values. The separate measured `touch/reference.bin` has a
+pinned hash in `src/verify-fedora44-oem-304.sh`.
 
 ## 1. Shared blobs from the stock OTA
 
-Use the matching Xiaomi package (`uke_global_images_OS3.0.303.0.WOZMIXM_16.0`
-or a newer one) and extract read-only:
+Use the matching Xiaomi package (`uke_global_images_OS3.0.304.0.WOZMIXM_16.0`)
+and extract read-only:
 
 ```sh
 simg2img super.img super.raw
@@ -137,17 +137,16 @@ helpers read these files at runtime. Do not copy them into an image or a bundle.
 ## 4. Verify
 
 ```sh
-bash uke-linux-hardware-support/xiaomi-uke-firmware/src/verify-local-blobs.sh
+bash uke-linux-hardware-support/xiaomi-uke-firmware/src/verify-fedora44-oem-304.sh
 ```
 
-Exit 0 means every required entry matches; 1 means a missing or mismatched
-entry; 2 means the manifest or root directory is unusable. Optional entries
-(TM panel, Bluetooth image) only print `optional absent`.
+Exit 0 means all 218 pinned payload files match; a nonzero exit means the
+bundle is missing files, has unexpected files or fails a size/hash check.
 
 ## 5. Build wiring
 
 - Fedora 44 image: `uke-fedora-builder/build-fedora44-rootfs.sh` uses the
-  bundled payload and runs `verify-local-blobs.sh` before
+  bundled payload and runs `verify-fedora44-oem-304.sh` before
   composing. It copies the selected panel's `normal.bin`, `config.ini` and
   measured `reference.bin` into `/var/lib/uke-touch/` in every rootfs. CSOT is
   the default; `--touch-panel tm` selects the TM files. The same recipe is used
@@ -161,20 +160,11 @@ entry; 2 means the manifest or root directory is unusable. Optional entries
   `/usr/lib/firmware/qcom/uke/sensors/sns_tppe.so`.
 - Fedora 44 firmware: `uke-fedora44-oem-data` includes the pinned SSC,
   Bluetooth, WPSS, ADSP, WLAN board and GPU set. Its 74 remoteproc/GPU files
-  are checked against `fedora44-firmware-303.json` before RPM staging.
-  `stage-local.sh` and `local-firmware-candidates.json` remain historical
-  OS3.0.304.0 evaluation inputs; the generic `firmware-lock.json` stays closed.
+  are checked against `local-firmware-candidates.json` before RPM staging.
+  The generic `firmware-lock.json` stays closed.
 - Other source builds still use their own firmware inputs.
 
-## 6. Earlier local bundle
-
-The owner keeps a pre-filled bundle at
-`private/uke-oem-blobs-OS3.0.303.0.WOZMIXM.tar.zst` with the same payload
-layout. The repository payload now adds the 74 stock firmware files to those
-earlier touch, SSC and Bluetooth inputs. The bundle's private notes and old
-publication marker were not copied.
-
-## 7. Licensing
+## 6. Licensing
 
 The maintainer reports a redistribution grant covering the OEM inputs. Its
 terms have not yet been added to this checkout. Record and check the grant for

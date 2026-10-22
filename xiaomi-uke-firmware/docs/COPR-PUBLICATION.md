@@ -44,9 +44,10 @@ families and inspected source revisions. Existing local payloads remain intact.
 The [candidate manifest](../manifests/local-firmware-candidates.json) pins 74
 files, their sizes, SHA-256 values, source selectors and installation paths.
 WPSS and ADSP match the pinned official OTA modem extraction. The three GPU
-files match the retained device extraction. On 20 October 2026, GMU and SQE
-were also independently matched to the verified OS3.0.304.0 vendor partition;
-the ZAP source container remains unverified. The connected tablet's board and regdb
+files were initially checked against a retained device extraction. GMU and SQE
+match the verified OS3.0.304.0 vendor partition. On 22 October, the ZAP file
+was replaced with the matching OS3.0.304.0 ODM file, and its partition hash
+matched the source manifest. The connected tablet's board and regdb
 hashes match the local OEM O82 Global board and regulatory files. None of these
 identity checks is a redistribution grant.
 

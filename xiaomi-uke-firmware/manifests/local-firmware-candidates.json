@@ -17,20 +17,22 @@
     "gpu": {
       "class": "locally-extracted-stock-device-files",
       "source_archive_verified": false,
-      "exact_archive_attribution": "GMU and SQE independently match the verified Global OS3.0.304.0 vendor partition; the ZAP source container remains unverified.",
+      "exact_archive_attribution": "GMU and SQE match the Global OS3.0.304.0 vendor partition; ZAP matches the Global OS3.0.304.0 odm partition.",
       "verified_oem_source": {
-        "date": "2026-10-20",
+        "date": "2026-10-22",
         "release": "OS3.0.304.0.WOZMIXM",
         "archive_sha256": "c56da12747c6c108929aedb09280f0b406bb03b9e959de7234db38ee2fa66d60",
         "partition": "vendor",
         "partition_sha256": "e5ed5a4d9565d36583677541b6217298b08491052dba288e7706c082de560347",
+        "odm_partition_sha256": "840f52991580882e1e44144527b6dbd24816a279bf490a7580a85b0e66319dea",
         "files": [
           "firmware/gen71100_gmu.bin",
           "firmware/gen71100_sqe.fw"
         ],
-        "remaining_unverified_files": [
-          "gen71100_zap.mbn"
-        ]
+        "odm_files": [
+          "firmware/gen71100_zap.mbn"
+        ],
+        "remaining_unverified_files": []
       }
     }
   },
@@ -824,7 +826,7 @@
       "source_path": "gen71100_zap.mbn",
       "target_path": "qcom/gen71100_zap.mbn",
       "bytes": 12088,
-      "sha256": "ac0165a5e2bb5735746d5c19ce71a964cdf99c7b36dedeb300db7496779e09b3",
+      "sha256": "9a87bc8bbcb0fcf509d9870e523514283ecda1623f686e154166c12354cd91e4",
       "redistribution_review_complete": false
     },
     {

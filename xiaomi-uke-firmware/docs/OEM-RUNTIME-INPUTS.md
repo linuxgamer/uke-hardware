@@ -4,6 +4,13 @@
 and local file preparation. No new tablet installation, firmware reload or
 physical acceptance was performed.
 
+22 October 2026 update: the Fedora 44 image bundle now uses only the
+OS3.0.304.0 boot template and OEM files. Its 218-file payload is checked by
+`src/verify-fedora44-oem-304.sh`. The remaining GPU ZAP file was found in the
+verified OS3.0.304.0 ODM partition and replaced the earlier local candidate;
+see `manifests/local-firmware-candidates.json`. The comparisons below describe
+the earlier source review, not an active 3.303 image input.
+
 The newest Global release found in the dated search was
 **OS3.0.304.0.WOZMIXM**, Android 16, security patch 1 September 2026.
 The [Global release index](https://mirom.ezbox.idv.tw/en/phone/uke/roms-global-stable/)
@@ -54,9 +61,9 @@ files used `mcopy` from the FAT image. No OEM script or extracted program ran.
 
 4. **Other known inputs:** the existing modem/ADSP and GPU staging interface
    remains available. GMU and SQE were independently matched to the 304 vendor
-   partition and their existing pinned hashes. The GPU ZAP source container
-   remains unresolved; this review did not find a matching file in the selected
-   vendor firmware directory or modem image directory. Public admission remains
+   partition and their existing pinned hashes. This review did not find GPU ZAP
+   in the selected vendor firmware or modem image directory; the 22 October
+   update above resolves it from the ODM partition. Public admission remains
    closed. No audio, camera, charging, GPU-driver or Wi-Fi-driver fix is inferred
    from the 143-file subset.
 

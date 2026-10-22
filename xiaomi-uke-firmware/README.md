@@ -24,9 +24,9 @@ physical operation. This local RPM is not a COPR input.
 
 This component owns the file-level admission rules for the shared hardware
 support repository. The Fedora 44 image builder uses the hash-pinned
-`payload/oem-os3.0.303.0/` touch set; SSC and Bluetooth data are staged there
-but not yet installed by that image recipe. The separate firmware RPM lock
-admits no WPSS, ADSP or GPU bytes, so `make srpm` still fails explicitly.
+`payload/oem-os3.0.304.0/` touch, SSC, Bluetooth, WPSS, ADSP and GPU set.
+The separate generic firmware RPM lock admits no WPSS, ADSP or GPU bytes, so
+`make srpm` still fails explicitly.
 The [15 October publication review](docs/COPR-PUBLICATION.md) identifies the
 local WPSS, ADSP and Adreno package families and the remaining source and
 redistribution checks. No local OEM firmware was uploaded by that review.

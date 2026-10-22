@@ -1,7 +1,7 @@
 Name: uke-fedora44-oem-data
-Version: 3.0.303.0
-Release: 2%{?dist}
-Summary: Xiaomi Pad 7 model firmware and SSC configuration from OS3.0.303.0
+Version: 3.0.304.0
+Release: 1%{?dist}
+Summary: Xiaomi Pad 7 model firmware and SSC configuration from OS3.0.304.0
 License: LicenseRef-Proprietary
 Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
@@ -19,9 +19,7 @@ cp -a ssc/odm/. %{buildroot}%{_datadir}/uke-sensors/odm/
 install -Dm644 ssc/sns_reg.conf %{buildroot}%{_datadir}/uke-sensors/sns_reg.conf
 install -Dm644 ssc/sns_tppe.so %{buildroot}%{_prefix}/lib/firmware/qcom/uke/sensors/sns_tppe.so
 mkdir -p %{buildroot}%{_prefix}/lib/firmware/qca
-install -m644 bt/image/msbtfw12.mbn bt/image/msbtfw12.tlv \
-    bt/image/msbtfw12.ver bt/image/msnv12.bin \
-    %{buildroot}%{_prefix}/lib/firmware/qca/
+cp -a bt/image/. %{buildroot}%{_prefix}/lib/firmware/qca/
 cp -a firmware/. %{buildroot}%{_prefix}/lib/firmware/
 
 %files
@@ -36,6 +34,9 @@ cp -a firmware/. %{buildroot}%{_prefix}/lib/firmware/
 %{_prefix}/lib/firmware/ath11k/WCN6750/hw1.0
 
 %changelog
+* Thu Oct 22 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 3.0.304.0-1
+- Use the pinned OS3.0.304.0 model firmware and SSC configuration.
+
 * Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 3.0.303.0-2
 - Add source-pinned WPSS, ADSP, WLAN board data and Adreno files.
 
