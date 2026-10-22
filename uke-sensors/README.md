@@ -1,5 +1,15 @@
 # Uke sensors
 
+21 October 2026 source correction: the native RAM cache compares its packaged
+DSP helper and configuration with installed inputs. A changed generation is
+published with an atomic directory exchange while preserving the current RAM
+registry. Both file services hold shared lifetime locks through an `exec` of
+the original daemon; no additional resident process is added. Cache preparation
+requires the exclusive lock and refuses active readers. The RPM transaction
+trigger restarts the cache, providers and SensorProxy in dependency order after
+firmware/configuration changes. Factory persist remains read-only. Host fixtures
+do not establish acceptance of a changed DSP binary on the tablet.
+
 18 October 2026: the separate, disabled-by-default native front-color publisher
 exposes raw CCT vectors with explicit freshness, wire status and
 unverified units/calibration. It preserves the original SensorProxy ALS API.
@@ -264,3 +274,40 @@ An earlier rapid restart races firmware initialization and times out; notify
 readiness removes that race in the repeated sequence. The original 90 Hz mode
 and normal input service are restored. Power-profile-controlled scanning needs
 a verified controller command; frequency hopping is not used as a substitute.
+
+18 October 2026: release-8 source reuses the open read-only panel-state
+provider for positional reads. Every pre-transfer and post-frame generation
+check remains. Kernel sysfs supplies the exact `generation ready\n` format;
+malformed, oversized, truncated and failed reads refuse SPI. Host fixtures
+also check repeated reads, reset races and recovery backoff. Packaged build,
+CPU measurements and physical input acceptance are separate test stages.
+
+Release 9 polls a pending command once per 20 ms within the existing 500 ms
+readiness budget. A guarded release-10 kernel trial measured about 345 ms to
+complete the first command after a RAM reload under wide AVR, exceeding the
+previous query window. Command payloads and generation guards are retained.
+Actual-function fixtures cover delayed completion, one write, bounded failure
+and a reset during polling. Repeated tablet recovery remains a separate gate.
+
+Release 10 handles the Uke OEM firmware-watchdog signature before THP checksum
+admission. On 18 October 2026, a POCO Pad X1 running kernel 7.2.10-20 loses
+contacts while GPIO interrupts continue and all 256 captured packets contain
+FE reset data. Release 9 discards these packets indefinitely. The new path
+requires eleven consecutive six-byte FD/FE signatures, releases contacts and
+reloads the verified normal firmware while retaining the input device. FE uses
+the stock idle-reset step first. Panel readiness/generation guards and bounded
+retries remain; exhausted recovery returns an explicit service failure.
+Exact OEM attribution is recorded in manifests/touch-normal-probe-source.json.
+
+19 October 2026: release 10 stalled inside its recursive contact assignment on
+POCO Pad X1 with Linux 7.2.11-6. The process reached a 6 GiB service memory peak;
+the retained partial core identifies the assignment function. Release 11 bounds
+the exact assignment to at most 4096 tracked-row states, including excess raw
+contact candidates, and retains deterministic minimum-cost matching. An
+exhaustive small-case comparison and a 12-by-32 overload regression run during
+RPM checks. The service also caps memory at 128 MiB and disables service swap.
+This corrects the unbounded host algorithm; separate firmware FD watchdogs and
+long-duration physical input continuity still require validation.
+Host checks cover signature interruptions, FE/FD paths, DPMS-off refusal and
+failed reloads. The original firmware reset trigger and physical continuity
+under VRR require separate tablet validation.

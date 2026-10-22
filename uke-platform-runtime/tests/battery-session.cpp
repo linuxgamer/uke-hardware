@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     auto result = models.observe(s, q);
     assert(!result.observed_efc && !result.capacity_retention_percent && !result.to_empty.seconds);
     assert(!std::filesystem::exists(directory + "/efc.state"));
-    q.current = q.energy = q.learned_capacity = q.capacity_basis = true;
+    q.current = q.voltage = q.energy = q.learned_capacity = q.capacity_basis = true;
     q.reserve_uwh = 1000000; q.efc_reference_uah = 1000000; q.profile = "fixture-qualified";
     result = models.observe(s, q);
     for (unsigned i = 1; i <= 2; ++i) {

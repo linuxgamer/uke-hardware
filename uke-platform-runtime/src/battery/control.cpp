@@ -44,11 +44,12 @@ State parse_state(const std::string &text) {
     s.temperature_deciC = decimal<int32_t>(token[21]); s.voltage_uv = decimal<uint32_t>(token[22]);
     s.measured_current_ua = decimal<int32_t>(token[23]); s.measurement_ns = decimal<uint64_t>(token[24]);
     s.invalidation_ns = decimal<uint64_t>(token[26]);
-    if (version != 1 ||
+    if ((version != 1 && version != 2) ||
         compiled > 1 || live > 1 || enabled > 1 || verified > 1 || standard > 1 ||
         cc > 1 || ca > 1 || cv > 1 || mv > 1 || s.current_ua > INT32_MAX ||
         s.start > 100 || s.end > 100 || !(in >> std::ws).eof() ||
         (s.evidence != "none" && !digest(s.evidence))) fail("control_state_invalid");
+    s.protection_compiled = version == 2;
     s.compiled = compiled; s.live = live; s.enabled = enabled;
     s.verified = verified; s.standard_clients = standard;
     s.current_compiled = cc; s.current_admitted = ca; s.current_verified = cv; s.measurement_valid = mv;
@@ -103,6 +104,52 @@ bool settings_match_context(const Settings &s, const Context &before, const Cont
         before.boottime_ns <= s.received_ns && s.received_ns <= after.boottime_ns &&
         after.boottime_ns - s.received_ns <= 5ULL * 1000000000ULL;
 }
+Protection parse_protection(const std::string &text) {
+    if (text.size() > 4096) fail("protection_size_invalid");
+    std::array<std::string, 8> t;
+    std::istringstream in(text);
+    for (auto &value : t) if (!(in >> value)) fail("protection_fields_missing");
+    Protection s;
+    const auto version = decimal<unsigned>(t[0]), enabled = decimal<unsigned>(t[6]);
+    const auto moisture = decimal<unsigned>(t[7]);
+    s.instance = decimal<uint64_t>(t[1]); s.generation = decimal<uint32_t>(t[2]);
+    s.firmware = decimal<uint32_t>(t[3]); s.source = decimal<uint32_t>(t[4]);
+    s.received_ns = decimal<uint64_t>(t[5]);
+    if (version != 1 || !s.instance || !s.received_ns || enabled > 1 || moisture > 1 ||
+        !(in >> std::ws).eof()) fail("protection_invalid");
+    s.enabled = enabled; s.moisture_reported = moisture;
+    return s;
+}
+bool protection_match_context(const Protection &s, const Context &before, const Context &after) {
+    const auto matches = [&](const Context &c) {
+        return c.provider_verified && c.state.protection_compiled && c.state.instance == s.instance &&
+            c.state.generation == s.generation && c.state.firmware == s.firmware && c.state.source == s.source;
+    };
+    return s.instance && s.received_ns && matches(before) && matches(after) && !before.boot_id.empty() &&
+        before.boot_id == after.boot_id && !before.kernel_release.empty() && before.kernel_release == after.kernel_release &&
+        before.boottime_ns && before.boottime_ns <= s.received_ns && s.received_ns <= after.boottime_ns &&
+        after.boottime_ns - s.received_ns <= 5ULL * 1000000000ULL;
+}
+ProtectionCache parse_protection_cache(const std::string &text) {
+    if (text.size() > 4096) fail("protection_cache_size_invalid");
+    std::array<std::string, 13> t;
+    std::istringstream in(text);
+    for (auto &value : t) if (!(in >> value)) fail("protection_cache_fields_missing");
+    ProtectionCache s;
+    const auto version = decimal<unsigned>(t[0]), enabled = decimal<unsigned>(t[6]);
+    const auto moisture = decimal<unsigned>(t[7]), valid = decimal<unsigned>(t[8]);
+    const auto latched = decimal<unsigned>(t[9]), inhibit = decimal<unsigned>(t[10]);
+    s.instance = decimal<uint64_t>(t[1]); s.generation = decimal<uint32_t>(t[2]);
+    s.firmware = decimal<uint32_t>(t[3]); s.source = decimal<uint32_t>(t[4]);
+    s.received_ns = decimal<uint64_t>(t[5]); s.dry_since_ns = decimal<uint64_t>(t[11]);
+    s.faults = decimal<uint32_t>(t[12]);
+    if (version != 1 || !s.instance || enabled > 1 || moisture > 1 || valid > 1 ||
+        latched > 1 || inhibit > 1 || s.faults > 15 || (valid && !s.received_ns) || (inhibit && (!valid || (!latched && !s.faults))) ||
+        !(in >> std::ws).eof()) fail("protection_cache_invalid");
+    s.enabled = enabled; s.moisture_reported = moisture; s.valid = valid;
+    s.wet_latched = latched; s.input_suspend_readback = inhibit;
+    return s;
+}
 bool preconfigured_cap_context_matches(const Context &before, const Context &after) {
     const auto quiescent = [](const Context &c) {
         return c.provider_verified && c.state.compiled && !c.state.live &&
@@ -126,6 +173,7 @@ Session::~Session() { try { revoke(); } catch (...) {} }
 Admission inspect_admission(const Context &c, const Profile &p) {
     Admission a;
     const auto &s = c.state;
+    if (!s.protection_compiled) { a.reason = "control_protection_backend_unavailable"; return a; }
     if (!c.provider_verified || !s.compiled || !s.instance || !c.boottime_ns) {
         a.reason = "control_provider_unqualified"; return a;
     }
@@ -160,7 +208,10 @@ void Session::admit(uint64_t now) {
     if (!profile_.qualified || !digest(profile_.evidence) || !now ||
         profile_.expires_ns <= now || profile_.lease_ns < 15000000000ULL ||
         profile_.lease_ns > 30000000000ULL) fail("control_profile_unqualified_or_expired");
+    for (const auto &range : profile_.external_thermal)
+        if (range.minimum_mC >= range.maximum_mC) fail("control_external_thermal_limits_invalid");
     const State s = io_.state();
+    if (!s.protection_compiled) fail("control_protection_backend_unavailable");
     if (!same(s, binding_)) fail("control_identity_changed");
     if (!profile_.reviewed_ns || profile_.reviewed_ns <= s.invalidation_ns)
         fail("control_review_invalidated_by_lifecycle");
@@ -176,13 +227,16 @@ void Session::admit(uint64_t now) {
     const uint64_t expires = now + std::min(profile_.lease_ns, profile_.expires_ns - now);
     if (expires < now) fail("control_lease_time_overflow");
     std::ostringstream record;
-    record << "1 " << s.instance << ' ' << s.generation << ' ' << s.firmware << ' '
+    record << "2 " << s.instance << ' ' << s.generation << ' ' << s.firmware << ' '
         << s.source << ' ' << expires << ' ' << profile_.ack_bytes << ' '
         << profile_.usb_type << ' ' << profile_.may_enable << ' ' << profile_.standard_clients << ' '
         << profile_.temperature_min << ' ' << profile_.temperature_max << ' '
         << profile_.voltage_min_uv << ' ' << profile_.voltage_max_uv << ' '
         << profile_.current_abs_max_ua << ' ' << profile_.cap_resume_percent << ' ' << profile_.evidence
-        << ' ' << profile_.reviewed_ns << '\n';
+        << ' ' << profile_.reviewed_ns;
+    for (const auto &range : profile_.external_thermal)
+        record << ' ' << range.minimum_mC << ' ' << range.maximum_mC;
+    record << '\n';
     owns_lease_ = true;
     io_.write("uke_charge_lease", record.str());
     const State next = io_.state();
@@ -222,6 +276,16 @@ State Session::current(uint32_t value, uint64_t now) {
         s.evidence != profile_.evidence || s.current_verified_ns < now || s.current_verified_ns >= s.expires_ns)
         fail("control_current_readback_mismatch");
     return s;
+}
+void Session::enable_moisture(uint64_t now) {
+    admit(now);
+    write_attempted_ = true;
+    io_.write("uke_charge_moisture_enable", "1\n");
+}
+void Session::wet_guard(uint64_t now) {
+    admit(now);
+    write_attempted_ = true;
+    io_.write("uke_charge_wet_guard", "1\n");
 }
 uint32_t current_ceiling(const Profile &p, const State &s, uint64_t now) {
     if (!p.qualified || !p.current_control || !s.live || !s.current_verified || !s.current_admitted ||

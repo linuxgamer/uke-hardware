@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 Name: uke-desktop-metas
 Version: 1.0.0
-Release: 5%{?dist}
+Release: 7%{?dist}
 Summary: Explicit desktop package selections for the Uke development platform
 License: MIT
 URL: https://github.com/MCC45TR/uke-linux-hardware-support/tree/main/uke-desktop-metas
@@ -9,14 +9,16 @@ Source0: %{name}-%{version}.tar.xz
 ExclusiveArch: aarch64
 BuildRequires: tar xz bash jq diffutils
 Requires: uke-core-meta >= 1.0.0-3
-Obsoletes: kde-plasma-uke-meta < 1.0.0-3
 %description
 Desktop selection metadata for Uke. The base installs no graphical session.
 Display, touch, GPU and tablet boot remain independently unqualified.
 
-%package -n kde-plasma-uke-meta
+%package -n uke-kde-plasma-meta
+Provides: kde-plasma-uke-meta = 1.0.0-7
+Obsoletes: kde-plasma-uke-meta < 1.0.0-7
+Conflicts: kde-plasma-uke-meta
 Summary: Original Fedora Plasma applications for the Uke development platform
-Requires: senemos-uke-linux-kernel-mainline >= 7.2.9-1.35
+Requires: (senemos-uke-linux-kernel-mainline >= 7.2.11-16 or senemos-uke-linux-kernel-mainline-singleboot >= 7.2.11-16)
 # Keep this optional selection independent of the Python-free console meta.
 # BEGIN ORIGINAL FEDORA PLASMA PACKAGES
 Requires: PackageKit
@@ -86,7 +88,7 @@ Requires: wireplumber
 Requires: xsettingsd
 # END ORIGINAL FEDORA PLASMA PACKAGES
 
-%description -n kde-plasma-uke-meta
+%description -n uke-kde-plasma-meta
 An optional application selection for Fedora Rawhide AArch64. All desktop
 applications remain the original Fedora packages, including their original
 distribution-provided helpers. The selection installs no Uke desktop fork,
@@ -107,7 +109,7 @@ bash tests/plasma-profile.sh
 %doc README.md
 %{_datadir}/senemos/uke/desktops/profile.json
 
-%files -n kde-plasma-uke-meta
+%files -n uke-kde-plasma-meta
 %license LICENSE
 %doc README.md
 %{_datadir}/senemos/uke/desktops/plasma.json

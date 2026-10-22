@@ -1,5 +1,16 @@
 # Stock-ABL kernel updates
 
+21 October 2026 correction: updater 1.1.2 also enforces the global disable inside
+its native automatic userdata entry point, before boot acceptance or staging.
+Both global and userdata flags must be valid and enabled. The explicit manual
+commands retain their independent validation. The prior userdata implementation
+did not enforce the global flag; its package description was insufficient.
+
+20 October 2026 source update: version 1.1.0 adds a separate guarded
+[userdata boot A/B path](USERDATA-AB.md). The Linux-root writer and its explicit
+enablement policy remain. The 15 October device results below describe that
+earlier Linux-root path; they do not qualify the new userdata implementation.
+
 15 October 2026. Fedora Rawhide AArch64 stock-ABL update implementation.
 On Uke, COPR kernel 7.2.9-1.40 and updater 0.1.0-12 passed DNF installation,
 complete boot B write/readback and an ordinary reboot to Fedora/KDE. The new
@@ -17,15 +28,17 @@ never update targets. The tool does not reboot or select a slot.
 Each Linux-only bundle has `linux.img`, `modules.sha256` and a strict
 key/value `manifest` containing `format=1`, `kernel_release`,
 `linux_image_sha256`, `userdata_image_sha256`, `linux_kernel_sha256`,
-`userdata_kernel_sha256` and `modules_sha256`. The module inventory contains
+`userdata_kernel_sha256` and `modules_sha256`. New root-selecting bundles may
+also declare `root_selector_capability=uke-elfnote-v1`; unknown capabilities and
+other extra fields are refused. The module inventory contains
 SHA-256 rows relative to `/usr/lib/modules/KERNEL_RELEASE`, limited to the exact
 `kernel/` module file set. The installed core Image must match the Linux variant;
 both userdata manifest values must be `unsupported` for this supported layout.
 Payloads must be root-owned and not group/world-writable.
 
-The first update path supports the physical `linux` root. A `userdata` boot
-variant is not admitted by this writer; publishing a separate preview image
-does not qualify in-system updates for that layout.
+The original update path supports the physical `linux` root. Userdata was not
+admitted by that implementation; its new policy and validation gates are
+documented separately above.
 
 The new kernel must have a **different kernel release**, and running-kernel
 modules must remain installed. A package revision that replaces the same module
@@ -84,3 +97,17 @@ with SELinux enforcing; exact readback and an idempotent no-write check passed.
 
 The v4 layout follows the [AOSP boot image header specification](https://source.android.com/docs/core/architecture/bootloader/boot-image-header).
 Package admission follows the [DNF5 signature configuration](https://dnf5.readthedocs.io/en/latest/dnf5.conf.5.html).
+
+## Matched kernel variants
+
+21 October 2026, updater 1.2.0: package verification admits only the mainline,
+mainline-KVM and mainline-unstable source families. Core, modules, DTBs and boot
+files must share that family and the exact RPM tuple. KVM and unstable core RPMs
+must also provide the exact `kernel-uname-r(...)` capability named by the bundle;
+a matching version number in another namespace is insufficient. Rollback module
+verification follows the running core's admitted family and checks its RPM files.
+
+This extends package verification without enabling automatic updates. It does
+not qualify alternating-slot firmware, suspend, KVM or an unstable kernel boot.
+The manual current-slot path retains its physical boot identity, power, durable
+backup, readback and protected-partition checks.

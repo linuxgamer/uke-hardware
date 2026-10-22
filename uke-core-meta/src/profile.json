@@ -2,15 +2,15 @@
   "schema_version": 1,
   "device": "uke",
   "soc": "SM7675",
-  "profile": "console-package-candidate",
+  "profile": "device-runtime-selection",
   "kernel_family": "senemos-uke-linux-kernel-mainline",
-  "minimum_kernel_evr": "7.2.9-1.3",
+  "minimum_kernel_evr": "7.2.11-16",
   "boot_tested": false,
   "hardware_tested": false,
-  "firmware_delivery": "not-admitted",
-  "boot_selection": "external-independent-qualification",
+  "firmware_delivery": "COPR-generic-files-and-separate-per-device-calibration",
+  "boot_selection": "preserve-installed-linux-or-userdata-profile",
   "runtime_policy": "Fedora distribution dependencies are allowed, including Python",
   "native_runtime_capabilities": [
-    "libstdc++"
+    "senemos-native-runtime(libstdc++)"
   ]
 }

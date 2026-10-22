@@ -1,0 +1,24 @@
+[Unit]
+Description=Uke USB-C moisture observation and qualified input protection
+After=systemd-udev-trigger.service
+ConditionPathExists=/sys/firmware/devicetree/base/compatible
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/uke-charge-control protection-serve
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=69
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/run/uke-charge-control
+RuntimeDirectory=uke-charge-control
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+CapabilityBoundingSet=CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target

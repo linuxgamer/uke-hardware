@@ -12,7 +12,7 @@ StartLimitBurst=3
 [Service]
 Type=notify
 TimeoutStartSec=30
-ExecStart=/usr/libexec/uke-hexagonrpcd -f /dev/fastrpc-adsp -d adsp -s -R /run/uke-ssc/state
+ExecStart=/usr/bin/flock --shared --no-fork /run/uke-ssc/registry.lock /usr/libexec/uke-hexagonrpcd -f /dev/fastrpc-adsp -d adsp -s -R /run/uke-ssc/state
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10

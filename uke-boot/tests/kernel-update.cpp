@@ -17,11 +17,11 @@ static Bytes synthetic_boot(const std::string &release,const std::string &label)
     const auto words="Linux version "+release+" test root=PARTLABEL="+label+" rw";
     memcpy(b.data()+page+128,words.data(),words.size());return b;
 }
-static std::map<std::string,std::string> owners,dumps;
+static std::map<std::string,std::string> owners,dumps,capabilities;
 static std::string fake_rpm(const std::vector<std::string> &args) {
     assert(args.size()==5 && args[3]=="--");
     if(args[0]=="-qf")return owners.at(args[4]);
-    assert(args[0]=="-q");return dumps.at(args[4]);
+    assert(args[0]=="-q");return args[2]=="[%{PROVIDENAME}\n]"?capabilities.at(args[4]):dumps.at(args[4]);
 }
 static void record_package(const std::string &suffix,const std::vector<fs::path> &files) {
     const auto name="senemos-uke-linux-kernel-mainline"+suffix;
@@ -30,6 +30,12 @@ static void record_package(const std::string &suffix,const std::vector<fs::path>
     for(const auto &path:files) {owners[path.string()]=identity;dumps[nevra]+=path.string()+"\t"+digest(file(path))+"\n";}
 }
 static unsigned attempts=0;
+static std::string variant_module_nevra,variant_module_identity;
+static std::string fake_variant_rollback(const std::vector<std::string> &args) {
+    assert(args.back()==variant_module_nevra);
+    if(args.front()=="-q")return variant_module_identity;
+    assert(args.front()=="-V" && args[1]=="--noscripts");return "";
+}
 static std::string fake_rollback_rpm(const std::vector<std::string> &args) {
     assert(args.back()=="senemos-uke-linux-kernel-mainline-modules-0:7.2.9-1.40.fc46.aarch64");
     if(args.front()=="-q")return "senemos-uke-linux-kernel-mainline-modules\t0\t7.2.9\t1.40.fc46\taarch64\t8\n";
@@ -45,11 +51,39 @@ static void terminate_during_write(int fd,const Bytes &data) {
 int main() {
     char dir[]="/tmp/uke-kernel-update.XXXXXX";assert(mkdtemp(dir));const fs::path root=dir;
     assert(root_label("console=tty0 root=PARTLABEL=linux rw")=="linux");
-    reject([]{root_label("root=PARTLABEL=userdata rw");});reject([]{root_label("root=UUID=123");});
+    assert(root_label("root=PARTLABEL=userdata rw")=="userdata");reject([]{root_label("root=UUID=123");});
     reject([]{root_label("root=PARTLABEL=linux root=PARTLABEL=linux");});
     assert(uke_device(std::string("xiaomi,uke\0qcom,sm7675\0",24)));
     reject([]{properties("format=1\nformat=1\n");});reject([]{properties("format=\n");});
     const std::string hash(64,'a');
+    for(const std::string variant:{"-kvm","-unstable"}) {
+        const auto version=variant=="-kvm"?"7.2.12":"7.3.0";
+        const auto abi=std::string(version)+"-2"+variant;
+        const auto family="senemos-uke-linux-kernel-mainline"+variant;
+        assert(kernel_family(abi)==family);
+        std::map<std::string,std::map<fs::path,std::string>> groups;
+        for(const std::string suffix:{"-boot","-core","-dtbs","-modules"}) {
+            const auto path=root/(variant+suffix);
+            const auto name=family+suffix,nevra=name+"-0:"+version+"-2.fc46.aarch64";
+            owners[path.string()]=name+"\t0\t"+version+"\t2.fc46\taarch64\t8\n";
+            dumps[nevra]=path.string()+"\t"+hash+"\n";groups[suffix][path]=hash;
+            if(suffix=="-core")capabilities[nevra]="kernel-uname-r("+abi+")\n";
+        }
+        installed_files(groups,abi,fake_rpm);
+        const auto core_nevra=family+"-core-0:"+version+"-2.fc46.aarch64";
+        capabilities[core_nevra]="kernel-uname-r(unmatched)\n";
+        reject([&]{installed_files(groups,abi,fake_rpm);});
+        capabilities[core_nevra]="kernel-uname-r("+abi+")\n";
+        reject([&]{installed_files(groups,abi+"-foreign",fake_rpm);});
+        const auto mixed=root/(variant+"-modules");const auto saved_owner=owners[mixed.string()];
+        owners[mixed.string()]="senemos-uke-linux-kernel-mainline-modules\t0\t"+std::string(version)+"\t2.fc46\taarch64\t8\n";
+        reject([&]{installed_files(groups,abi,fake_rpm);});owners[mixed.string()]=saved_owner;
+        const auto core=package(owners[(root/(variant+"-core")).string()],family+"-core");
+        variant_module_nevra=family+"-modules-0:"+version+"-2.fc46.aarch64";
+        variant_module_identity=owners[mixed.string()];rollback_modules(core,fake_variant_rollback);
+    }
+    reject([]{rollback_modules(Package{"other-core","0","7.3.0","2.fc46","aarch64","8"},fake_variant_rollback);});
+    owners.clear();dumps.clear();capabilities.clear();
     reject([&]{module_inventory(hash+"  ../wrong.ko.zst\n");});
     reject([&]{module_inventory(hash+"  kernel/../wrong.ko.zst\n");});
     reject([&]{module_inventory(hash+"  kernel/right.ko\n"+hash+"  kernel/right.ko\n");});
@@ -68,6 +102,14 @@ int main() {
     text(root/"virtual/sdc1/partition","1\n");text(root/"virtual/sdc1/uevent","PARTNAME=linux\n");text(root/"virtual/sdc1/dev","8:33\n");
     fs::create_directory_symlink(root/"virtual/sdc1",root/"sys/sdc1");reject([&]{partition("linux",root/"sys");});
     root_mount(makedev(8,1),"1 2 8:1 / / rw - ext4 /dev/sda1 rw\n");
+    root_mount(makedev(8,1),"1 2 8:1 / / rw,noatime - f2fs /dev/sda1 rw\n","userdata");
+    for (const auto *type : {"ext4", "xfs"}) {
+        const auto mount = std::string("1 2 8:1 / / rw - ") + type + " /dev/sda1 rw\n";
+        assert(root_mount(makedev(8,1),mount,"userdata") == type);
+    }
+    reject([]{root_mount(makedev(8,1),"1 2 8:1 / / rw - xfs /dev/sda1 rw\n","linux");});
+    reject([]{root_mount(makedev(8,1),"1 2 0:17 / / rw - btrfs /dev/sda1 rw\n","userdata");});
+    reject([]{root_mount(makedev(8,1),"1 2 8:1 / / ro - f2fs /dev/sda1 ro\n","userdata");});
     reject([]{root_mount(makedev(8,1),"1 2 8:1 /subdir / rw - ext4 /dev/sda1 rw\n");});
     reject([]{root_mount(makedev(8,1),"1 2 8:2 / / rw - ext4 /dev/sda2 rw\n");});
     const auto bundle=root/"bundle",modules=root/"modules";fs::create_directories(bundle);
@@ -76,18 +118,31 @@ int main() {
     const auto module=modules/release/"kernel/test.ko.zst",dtb=modules/release/"dtb/qcom/sm7675-xiaomi-uke.dtb";
     text(module,"synthetic module");text(dtb,"synthetic dtb");
     const auto inventory=digest(file(module))+"  kernel/test.ko.zst\n";text(bundle/"modules.sha256",inventory);
-    const auto lp=synthetic_boot(release,"linux"),up=synthetic_boot(release,"userdata");
+    const auto lp=synthetic_boot(release,"linux");auto up=lp;
+    constexpr char userdata_selector[]="senemos.root=userdata";
+    memcpy(up.data()+44,userdata_selector,sizeof(userdata_selector)-1);
     save_new(bundle/"linux.img",lp);save_new(bundle/"userdata.img",up);save_new(modules/release/"vmlinuz",boot_kernel(lp));
     const auto manifest="format=1\nkernel_release="+release+"\nlinux_image_sha256="+digest(lp)+"\nuserdata_image_sha256="+digest(up)+
         "\nlinux_kernel_sha256="+digest(boot_kernel(lp))+"\nuserdata_kernel_sha256="+digest(boot_kernel(up))+"\nmodules_sha256="+digest(file(bundle/"modules.sha256"))+"\n";
     text(bundle/"manifest",manifest);
-    record_package("-boot",{bundle/"manifest",bundle/"modules.sha256",bundle/"linux.img"});
+    record_package("-boot",{bundle/"manifest",bundle/"modules.sha256",bundle/"linux.img",bundle/"userdata.img"});
     record_package("-core",{modules/release/"vmlinuz"});record_package("-modules",{module});record_package("-dtbs",{dtb});
     const auto core_package=package(owners.at((modules/release/"vmlinuz").string()),"senemos-uke-linux-kernel-mainline-core");
     rollback_modules(core_package,fake_rollback_rpm);attempts=1;reject([&]{rollback_modules(core_package,fake_rollback_rpm);});attempts=0;
     assert(validate_bundle(bundle,modules,"linux",running,fake_rpm)==lp);
     assert(validate_bundle(bundle,modules,"linux",release,fake_rpm)==lp);
+    assert(validate_bundle(bundle,modules,"userdata",running,fake_rpm)==up);
+    const auto boot_package="senemos-uke-linux-kernel-mainline-boot-0:7.2.9-1.40.fc46.aarch64";
+    const auto boot_dump=dumps[boot_package];
+    text(bundle/"manifest",manifest+"root_selector_capability=uke-elfnote-v1\n");
+    auto &dump=dumps[boot_package];const auto old_digest=digest(Bytes(manifest.begin(),manifest.end()));
+    dump.replace(dump.find(old_digest),old_digest.size(),digest(file(bundle/"manifest")));
+    assert(validate_bundle(bundle,modules,"userdata",running,fake_rpm)==up);
+    text(bundle/"manifest",manifest+"root_selector_capability=unknown\n");
     reject([&]{validate_bundle(bundle,modules,"userdata",running,fake_rpm);});
+    text(bundle/"manifest",manifest+"unknown=uke-elfnote-v1\n");
+    reject([&]{validate_bundle(bundle,modules,"userdata",running,fake_rpm);});
+    text(bundle/"manifest",manifest);dumps[boot_package]=boot_dump;
     const auto good_owner=owners.at(module.string());owners[module.string()]="other\t0\t7.2.9\t1.40.fc46\taarch64\t8\n";
     reject([&]{validate_bundle(bundle,modules,"linux",running,fake_rpm);});owners[module.string()]=good_owner;
     owners[module.string()]="senemos-uke-linux-kernel-mainline-modules\t0\t7.2.9\t1.41.fc46\taarch64\t8\n";

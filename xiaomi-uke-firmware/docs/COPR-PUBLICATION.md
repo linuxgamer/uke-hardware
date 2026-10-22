@@ -1,5 +1,40 @@
 # Firmware publication review
 
+## 20 October 2026 publication preparation
+
+Environment: Fedora 46 host, Fedora Rawhide AArch64 offline root and RPM source
+composition. The publisher requested COPR submission after the local-only
+prototype and the incomplete distribution review were disclosed. The canonical
+data RPM is `uke-firmware` 3.0.304.0-1, carried by the combined `uke-hw` source
+family. No separate firmware source row or partial hardware-family submission
+is required. The original local prototype remains a rollback artifact.
+
+`make copr-srpm PUBLICATION_REQUESTED=yes OEM_FILES=... MODEM_FILES=...
+GPU_FILES=... NOTICE_FILES=... outdir=...` reuses the validated local staging
+recipe and emits a complete leaf SRPM for the family composer. Its input is
+217 pinned generic files; it includes the exact OTA `vendor/etc/NOTICE.xml.gz`
+and `odm/etc/NOTICE.xml.gz`, checked against their extraction hashes. No factory
+address, persist contents or device-captured touch reference enters the archive.
+Historical source manifests retain their original local-review state rather
+than being rewritten as a legal grant. `PUBLICATION.txt` records that limit.
+
+The extracted ODM notice maps the normal CSOT/TM firmware and three unrelated
+BLE configuration paths to the Android Apache-2.0 content entry. It has no
+complete file-level mapping for this 217-file selection; the vendor notice
+does not resolve the selected DSP/GPU/Bluetooth paths. The notices are preserved
+without extending their scope to unlisted firmware. Their compressed SHA-256:
+
+- Vendor: `ce8281d6fed48c89db41fc6ba79d6a2502e1c4406e14cbf0e4e9f2c739a52c05`
+- ODM: `71aef2c9cb076992714858bd3861590e7329c82098501c19a7075b00c9540727`
+
+The source and local binary build passed their byte-identity checks. An AArch64
+offline DNF transaction replaced `xiaomi-uke-firmware` with `uke-firmware`;
+dependency verification and `rpm -V` passed and the private touch reference was
+unchanged. No tablet operation was performed. The COPR build and downloaded
+signature/payload verification require their own recorded result.
+
+## Retained 15 October review
+
 Reviewed **15 October 2026** for Uke, Fedora Rawhide AArch64 and Linux 7.2.9.
 The tablet uses local OEM WPSS, ADSP and Adreno firmware packages. Their
 installation does not establish permission to publish their bytes in COPR.
@@ -9,10 +44,16 @@ families and inspected source revisions. Existing local payloads remain intact.
 The [candidate manifest](../manifests/local-firmware-candidates.json) pins 74
 files, their sizes, SHA-256 values, source selectors and installation paths.
 WPSS and ADSP match the pinned official OTA modem extraction. The three GPU
-files match the retained device extraction; their original source container
-still needs independent verification. The connected tablet's board and regdb
+files match the retained device extraction. On 20 October 2026, GMU and SQE
+were also independently matched to the verified OS3.0.304.0 vendor partition;
+the ZAP source container remains unverified. The connected tablet's board and regdb
 hashes match the local OEM O82 Global board and regulatory files. None of these
 identity checks is a redistribution grant.
+
+The [OS3.0.304.0 runtime input profile](OEM-RUNTIME-INPUTS.md) separately
+records 143 SSC, touch and Bluetooth files. It uses the same host staging helper
+with a complete source manifest, an exact known-missing SSC reference set and
+private touch preparation assets. It does not add public firmware admission.
 
 For a local evaluation, first extract the pinned official OTA using the
 host-only tool revision recorded in

@@ -1,0 +1,15 @@
+[
+  {
+    "name": "outputs",
+    "data": [
+      {
+        "connectorName": "DSI-1",
+        "autoRotation": "InTabletMode",
+        "automaticBrightness": true,
+        "autoBrightnessCurve": [[0, 0.02], [5, 0.04], [20, 0.1], [100, 0.25], [500, 0.5], [2000, 0.75], [10000, 1]],
+        "vrrPolicy": "Always"
+      }
+    ]
+  },
+  {"name": "setups", "data": []}
+]

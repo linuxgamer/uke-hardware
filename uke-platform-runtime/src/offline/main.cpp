@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Offline UI only. Charging, temperature and electrical protection remain firmware-owned.
-#include "io.hpp"
+#include "sampler.hpp"
 #include "screen.hpp"
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -33,32 +33,6 @@ struct Fd {
     Fd(const Fd&)=delete; Fd& operator=(const Fd&)=delete;
     ~Fd() { if (value>=0) close(value); }
 };
-std::optional<std::int64_t> number(const std::string &path) {
-    const auto raw = ui::read(path,64);
-    auto s = ui::trim(raw);
-    if (s.empty() || s.size()>12) return {};
-    std::int64_t n=0;
-    const auto result=std::from_chars(s.data(),s.data()+s.size(),n);
-    if(result.ec!=std::errc{} || result.ptr!=s.data()+s.size() || n<INT32_MIN || n>INT32_MAX) return {};
-    return n;
-}
-ui::Snapshot sample() {
-    ui::Snapshot s;
-    const std::string base="/sys/class/power_supply/qcom-battmgr-bat/";
-    const auto percent=number(base+"capacity"), present=number(base+"present");
-    const auto online=number("/sys/class/power_supply/qcom-battmgr-usb/online");
-    s.status=ui::trim(ui::read(base+"status",64));
-    s.health=ui::trim(ui::read(base+"health",64));
-    s.valid=percent && *percent>=0 && *percent<=100 && present && *present==1 && !s.status.empty() && !s.health.empty();
-    if (s.valid) s.percent=*percent;
-    s.input_known=online && (*online==0||*online==1);
-    s.online=s.input_known && *online==1;
-    s.power_uw=number(base+"power_now");
-    s.temperature_decic=number(base+"temp");
-    const auto seconds=number(base+"time_to_full_avg");
-    if(seconds && *seconds>0 && *seconds<=9999*60) s.full_seconds=seconds;
-    return s;
-}
 class Display {
     Fd fd;
     std::uint32_t connector=0, crtc=0, fb=0, handle=0, pitch=0, dpms=0;
@@ -177,7 +151,9 @@ int run() {
     if (inputs.empty()) throw std::runtime_error("power_key_unavailable");
     ui::Screen screen;
     bool held=false, blank=false, blank_attempted=false;
-    auto last_sample=Clock::time_point::min(), awake=Clock::now(), pressed=awake;
+    ui::Sampler sampler;
+    auto awake=Clock::now(), pressed=awake;
+    screen.render({}); display.show(screen);
     std::optional<Clock::time_point> unplugged;
     std::string prior;
     std::cout<<"Offline charging UI active; firmware retains all charging control.\n"<<std::flush;
@@ -193,9 +169,9 @@ int run() {
             }
         }
         if (held && now-pressed>=std::chrono::seconds(2)) { display.blank(false); if(action(true)) return 0; throw std::runtime_error("normal_boot_request_failed"); }
-        if (last_sample==Clock::time_point::min() || now-last_sample>=std::chrono::seconds(3)) {
-            const auto s=sample();
-            screen.render(s); display.show(screen); last_sample=now;
+        if (const auto updated=sampler.update([] { return ui::sample(); })) {
+            const auto &s=*updated;
+            screen.render(s); display.show(screen);
             const std::string state=(s.valid?std::to_string(s.percent):"unknown")+"/"+s.status+"/"+s.health;
             if (state!=prior) { std::cout<<"Battery "<<state<<"\n"<<std::flush; prior=state; }
             if(s.input_known && !s.online) { if(!unplugged) unplugged=now; }
@@ -206,6 +182,7 @@ int run() {
         if(!blank_attempted && !held && now-awake>=std::chrono::seconds(10)) { blank_attempted=true; blank=display.blank(true); }
         std::vector<pollfd> waiters;
         for(int fd:inputs) waiters.push_back({fd,POLLIN,0});
+        if(sampler.descriptor()>=0) waiters.push_back({sampler.descriptor(),POLLIN,0});
         if(poll(waiters.data(),waiters.size(),1000)<0 && errno!=EINTR) throw std::runtime_error("power_key_poll_failed");
     }
     display.blank(false);

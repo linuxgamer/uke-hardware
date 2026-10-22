@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "counters.hpp"
+#include "reader.hpp"
 #include <KPluginFactory>
 #include <QDir>
 #include <QElapsedTimer>
@@ -15,13 +16,6 @@
 
 namespace {
 constexpr double unavailable=std::numeric_limits<double>::quiet_NaN();
-std::optional<std::uint64_t> readCounter(const QString& path) {
-    QFile file(path);
-    if(!file.open(QIODevice::ReadOnly))return std::nullopt;
-    const auto value=file.read(128);
-    if(!file.atEnd())return std::nullopt;
-    return uke::unsigned_value(std::string_view(value.constData(),value.size()));
-}
 struct Device {
     QString path;
     KSysGuard::SensorProperty *usage,*frequency;
@@ -55,12 +49,12 @@ public:
     void update()override {
         for(auto& device:devices_) {
             if(device.usage->isSubscribed()) {
-                auto counter=readCounter(device.path+QStringLiteral("/gpu_engine_ns"));
+                auto counter=uke::read_counter(device.path+QStringLiteral("/gpu_engine_ns"));
                 if(counter){auto value=device.rate.sample(*counter,clock_.nsecsElapsed());device.usage->setValue(value.value_or(unavailable));}
                 else {device.rate.reset();device.usage->setValue(unavailable);}
             } else device.rate.reset();
             if(device.frequency->isSubscribed()) {
-                auto value=readCounter(device.path+QStringLiteral("/cur_freq"));
+                auto value=uke::read_counter(device.path+QStringLiteral("/cur_freq"));
                 device.frequency->setValue(value?double(*value)/1000000.0:unavailable);
             }
         }

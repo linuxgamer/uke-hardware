@@ -8,7 +8,7 @@
   "package_build_ready": true,
   "expected_packages": [
     "uke-desktop-metas",
-    "kde-plasma-uke-meta"
+    "uke-kde-plasma-meta"
   ],
   "nabu_reference_packages": [
     "nabu-desktop-metas",

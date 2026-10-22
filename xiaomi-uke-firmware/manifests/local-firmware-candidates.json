@@ -17,7 +17,21 @@
     "gpu": {
       "class": "locally-extracted-stock-device-files",
       "source_archive_verified": false,
-      "exact_archive_attribution": "Requires independent source-container verification before public admission"
+      "exact_archive_attribution": "GMU and SQE independently match the verified Global OS3.0.304.0 vendor partition; the ZAP source container remains unverified.",
+      "verified_oem_source": {
+        "date": "2026-10-20",
+        "release": "OS3.0.304.0.WOZMIXM",
+        "archive_sha256": "c56da12747c6c108929aedb09280f0b406bb03b9e959de7234db38ee2fa66d60",
+        "partition": "vendor",
+        "partition_sha256": "e5ed5a4d9565d36583677541b6217298b08491052dba288e7706c082de560347",
+        "files": [
+          "firmware/gen71100_gmu.bin",
+          "firmware/gen71100_sqe.fw"
+        ],
+        "remaining_unverified_files": [
+          "gen71100_zap.mbn"
+        ]
+      }
     }
   },
   "files": [

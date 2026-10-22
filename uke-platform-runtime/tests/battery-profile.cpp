@@ -33,6 +33,34 @@ int main(int argc, char **argv) {
     auto good = resolve(); assert(good.qualification.current && good.qualification.energy);
     assert(good.battery_id == hash && good.qualification.efc_reference_uah == 1000000);
     assert(good.assurance == "operator_attested_this_boot_not_hardware_authentication");
+    const std::string electrical = "\"electrical_basis\":{\"basis\":\"pack_terminal\",\"series_cells\":2,"
+        "\"parallel_cells\":1,\"nominal_pack_voltage_uv\":7400000},";
+    const auto pack_profile = replace(p, "\"measurements\":", electrical + "\"measurements\":");
+    put(profile, pack_profile);
+    good = resolve(); assert(good.qualification.series_cells == 2 && good.qualification.parallel_cells == 1);
+    assert(good.qualification.nominal_pack_voltage_uv == 7400000);
+    for (const auto &bad : {
+        replace(pack_profile, "\"series_cells\":2", "\"series_cells\":0"),
+        replace(pack_profile, "\"parallel_cells\":1", "\"parallel_cells\":65"),
+        replace(pack_profile, "\"series_cells\":2", "\"series_cells\":2.5"),
+        replace(pack_profile, "\"basis\":\"pack_terminal\"", "\"basis\":\"cell_equivalent\""),
+        replace(pack_profile, "\"nominal_pack_voltage_uv\":7400000", "\"nominal_pack_voltage_uv\":0")}) {
+        put(profile, bad); assert(!resolve().qualification.current);
+    }
+    std::string bands;
+    for (unsigned i = 0; i < 100; ++i) bands += (i ? "," : "") + std::string(i < 80 ? "1000000" : "null");
+    const std::string curve = "\"charge_curve\":{\"conditions\":\"profile:contract:thermal:load\","
+        "\"net_current_ua_by_soc\":[" + bands + "]},";
+    const auto curve_profile = replace(p, "\"measurements\":", curve + "\"measurements\":");
+    put(profile, curve_profile); good = resolve();
+    assert(good.qualification.current && good.qualification.qualified_charge_curve_ua[79] == 1000000);
+    assert(!good.qualification.qualified_charge_curve_ua[80]);
+    for (const auto &bad : {
+        replace(curve_profile, "[" + bands + "]", "[1000000]"),
+        replace(curve_profile, "1000000,1000000", "0,1000000"),
+        replace(curve_profile, "\"learned_capacity\":true", "\"learned_capacity\":false")}) {
+        put(profile, bad); assert(!resolve().qualification.current);
+    }
     for (const auto &bad : {
         replace(p, "\"schema_version\":1", "\"schema_version\":2"),
         replace(p, "\"schema_version\":1", "\"schema_version\":1,\"schema_version\":1"),

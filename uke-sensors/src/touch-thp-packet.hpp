@@ -14,6 +14,20 @@ struct Frame {
     std::uint16_t counter{}; // Equal values can carry different matrices; not a packet identity.
     std::uint8_t scan_mode{};
 };
+// Uke OEM nt36532_touch.ko checks six FD/FE bytes before the THP checksum
+// and reloads after more than ten consecutive watchdog packets.
+struct Watchdog {
+    unsigned consecutive{};
+    std::optional<std::uint8_t> observe(std::span<const std::uint8_t> data) {
+        if(data.size()!=frame_size) throw std::runtime_error("Truncated THP packet");
+        for(unsigned i=0;i<6;i++) {
+            if(data[i]!=0xfd && data[i]!=0xfe) {consecutive=0;return std::nullopt;}
+        }
+        if(++consecutive<=10) return std::nullopt;
+        consecutive=0;
+        return data[0];
+    }
+};
 inline int display_y(int coordinate,int height) {
     if(height<=0 || coordinate<0 || coordinate>=height) throw std::runtime_error("Touch Y outside OEM bounds");
     return height-1-coordinate;

@@ -1,2 +1,3 @@
 disable uke-charge-control.service
 disable uke-charge-automatic.service
+disable uke-charge-protection.service

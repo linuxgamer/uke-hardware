@@ -1,5 +1,23 @@
 # Uke CPU and GPU power profiles
 
+22 October 2026. POCO Pad X1, Fedora Rawhide AArch64, kernel `7.2.12-9`,
+boot integration `1.3.4` and original Fedora Power Profiles daemon `0.30-4`.
+The compatibility backend was removed through DNF. All three native profiles,
+normal boot, event-driven daemon refresh and one RTC s2idle/resume cycle passed
+with SELinux enforcing. CPU policies retain schedutil; native QoS selects the
+hardware minimum, unrestricted range or hardware maximum. GPU preferences
+remain 500/950 MHz. Independent tighter CPU/GPU user limits were preserved and
+restored after testing. Thermal fault injection and energy qualification remain
+open.
+
+The source family withdraws new compatibility-backend builds and uses the
+original distribution daemon. Retained signed backend archives are required
+before returning to an older kernel without the native profile provider.
+The legacy implementation and fixtures below are retained as historical source
+evidence; they are not a current COPR build selection.
+
+## Legacy backend observations
+
 18 October 2026. Tested on POCO Pad X1, Fedora Rawhide AArch64, original KDE,
 Linux `7.2.10-senemos.1.4056` and COPR `uke-power-profile-backend-0.1.0-3`.
 All three profiles appeared through the standard Power Profiles daemon D-Bus
@@ -60,3 +78,30 @@ COPR 11164959 passes the release-4 fixture. DNF installs the signed RPM on the
 same .4056 tablet; all three CPU/GPU profile choices pass the repeated bounded
 test and power saver is restored. This adds rollback coverage without changing
 the frequency/thermal qualification limits above.
+
+## Native provider handoff candidate, 22 October 2026
+
+The compatibility candidate retains legacy behavior on kernels without the
+`uke_platform_profile` module ABI. ABI version `1` reports read-only
+`parameters/probe_status`: `0` is pending, `1` is ready and `-1` is permanently
+unavailable. While pending, this driver defers. Once ready, it declines probing
+and refuses stale activation calls, allowing PPD's standard platform-profile
+driver to own CPU/GPU preferences. A permanent native-probe failure retains the
+existing backend. Missing or unknown ABI data defers rather than guessing.
+Provider change events request a fresh probe without a fixed startup delay.
+
+Install the compatible backend before booting the native-profile kernel.
+After actual native profile tests, explicitly keep the original Fedora
+`power-profiles-daemon` package installed, remove this overlay through DNF and
+restart the standard service. Retain the signed overlay RPM alongside older
+boot/module cohorts: an older-kernel rollback needs that overlay restored for
+its three profile choices. Manual native-provider rebinds require a balanced
+handoff first; neither the shim nor the kernel overrides an external governor.
+Host fixtures and source preparation do not qualify a tablet migration.
+
+The corrected backend probes its Uke admission before the standard platform
+driver. If the native interface appears during startup, this retains the
+deferred monitor before the standard probe can miss it. An absent module
+retains the legacy path; unreadable metadata, an incomplete module or an
+unknown ABI defers. Use `1.1.1-8` or newer for the tablet migration; the initial
+`1.1.0-7` handoff build did not cover this startup ordering.

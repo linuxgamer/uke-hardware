@@ -1,0 +1,31 @@
+--- a/nvt_touch_core.cpp
++++ b/nvt_touch_core.cpp
+@@ -1141,6 +1141,10 @@
+     decayPalmNoPeaks(matrix_maximum);
+ }
+ 
++static int incrementLifetimeCounter(int previous) {
++    return previous < std::numeric_limits<int>::max() ? previous + 1 : previous;
++}
++
+ bool TouchCore::updatePalm(const Matrix &delta,
+                            const std::vector<Peak> &peaks,
+                            const std::vector<Domain> &domains,
+@@ -1333,7 +1337,7 @@
+                     continue;
+                 if (std::abs(major_length - previous.major_length) < 1.5 &&
+                     previous.shape_ratio != 0.0)
+-                    palm_count = previous.palm_count + 1;
++                    palm_count = incrementLifetimeCounter(previous.palm_count);
+                 break;
+             }
+         }
+@@ -1443,7 +1447,7 @@
+         const TrackerSlot &previous = tracker_[number];
+         next[number] = TrackerSlot{true, previous.tracking_id, contact,
+                                    previous.contact.x, previous.contact.y,
+-                                   previous.age < std::numeric_limits<int>::max() ? previous.age + 1 : previous.age};
++                                   incrementLifetimeCounter(previous.age)};
+     }
+     std::vector<int> free_numbers;
+     free_numbers.reserve(kFingerSlots);

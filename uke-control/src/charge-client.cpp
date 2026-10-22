@@ -27,7 +27,7 @@ bool admission(const Result& result, const char* field) {
 }
 }
 Result control_query(const std::string& operation) {
-    if (operation != "status" && operation != "admission" && operation != "protocols" && operation != "capabilities" && operation != "settings")
+    if (operation != "status" && operation != "admission" && operation != "protocols" && operation != "capabilities" && operation != "settings" && operation != "protection" && operation != "protection-status")
         throw std::runtime_error("Unsupported charge-control query");
     return execute({helper, operation}, 10, 65536);
 }
@@ -58,6 +58,7 @@ Result control_mode(const std::string& mode) {
 Result enable_preconfigured_cap() {
     return execute({helper, "enable-cap80"}, 12, 65536);
 }
+Result enable_moisture() { return execute({helper,"moisture-enable"},20,65536); }
 Result apply_preconfigured_cap() {
     // One bounded request; preserve unknown outcomes and never replay it.
     return execute({helper, "apply-cap80"}, 12, 65536);

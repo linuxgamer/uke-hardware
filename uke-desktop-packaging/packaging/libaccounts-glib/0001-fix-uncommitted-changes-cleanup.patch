@@ -1,0 +1,15 @@
+# Upstream: https://gitlab.com/accounts-sso/libaccounts-glib/-/commit/270a66d5efe1453a2be4bad10894b947fdd2923e
+# Author: Alberto Mardegan; fix the destructor argument and uncommitted-change leak.
+diff --git a/libaccounts-glib/ag-account.c b/libaccounts-glib/ag-account.c
+index 8d6995b..7e67ba7 100644
+--- a/libaccounts-glib/ag-account.c
++++ b/libaccounts-glib/ag-account.c
+@@ -994,7 +994,7 @@ ag_account_finalize (GObject *object)
+     if (priv->changes)
+     {
+         DEBUG_INFO ("Finalizing account with uncommitted changes!");
+-        g_clear_pointer (&priv->services, _ag_account_changes_free);
++        g_clear_pointer (&priv->changes, _ag_account_changes_free);
+     }
+ 
+     G_OBJECT_CLASS (ag_account_parent_class)->finalize (object);

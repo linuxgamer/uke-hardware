@@ -16,11 +16,24 @@ retains charging and autonomous protection ownership. Independent 80% policy,
 actual cutoff, bypass, temperature qualification and power use remain separate.
 
 Battery power is the standard signed battery-side `power_now` in microwatts,
-not adapter input or negotiated maximum power. Temperature uses the standard
+not adapter input or negotiated maximum power. The matched Uke driver derives
+this value from V/I, so it is labelled as an estimate. When unavailable, a coherent
+voltage/current pair supplies a separately labelled **battery estimate** using
+`V_uV * I_uA / 1000000`. A connected adapter with negative battery power displays
+that the battery is draining. Temperature uses the standard
 deci-Celsius value. Time to full uses the firmware's positive `time_to_full_avg`
-only while actually Charging with input present. It is not a qualified prediction
+only with valid healthy data, known input present, Charging status and positive
+net battery power. Zero, negative or unavailable power keeps time unavailable,
+even if firmware still reports Charging. It is not a qualified prediction
 to an 80% target. Unavailable inputs show dashes; no percentage-only time or
 adapter-wattage estimate is invented.
+
+20 October 2026: sampling uses one child with a two-second deadline. A blocked
+driver read cannot stall power-key processing; timeout or failed reads clear the
+displayed measurements. No new child starts while the previous one remains
+unreaped. The exact battery/USB provider and transport/source epochs must match
+before and after the fixed read list. Host fixtures cover timeout, exception,
+source change and signed estimated power. Physical charger entry remains open.
 
 Hold the power key for two seconds to request a normal systemd reboot.
 Confirmed USB input loss across two samples requests normal systemd poweroff.

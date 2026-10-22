@@ -9,50 +9,25 @@ validate:
 srpm: validate
 	top="$$(realpath -m '$(outdir)/rpmbuild')"
 	mkdir -p "$$top"/{SOURCES,SPECS,SRPMS}
-	tar --sort=name --mtime=@1792281600 --owner=0 --group=0 --numeric-owner --transform='s,^,uke-adaptive-display-0.1.0/,' -cf - LICENSE docs/ADAPTIVE-DISPLAY.md docs/DISPLAY-CONTROLS.md docs/SUSPEND.md docs/SERVICE-POLICY.md docs/GPU-MONITORING.md src/adreno-stats packaging/adreno.page packaging/uke-adaptive-display.target packaging/80-uke-adaptive-display.preset packaging/71-uke-tablet-mode.rules packaging/61-uke-display-ddc.rules packaging/60-block-scheduler.rules packaging/powerdevilrc packaging/60-uke-display-ddc.conf packaging/30-uke-s2idle.conf packaging/uke-suspend.conf src/uke-ddc-config tests/ddc-config.sh | gzip -n > "$$top/SOURCES/uke-adaptive-display-0.1.0.tar.gz"
+	tar --sort=name --mtime=@1792281600 --owner=0 --group=0 --numeric-owner --transform='s,^,uke-adaptive-display-1.0.16/,' -cf - LICENSE docs/ADAPTIVE-DISPLAY.md docs/DISPLAY-CONTROLS.md docs/SUSPEND.md docs/SERVICE-POLICY.md docs/GPU-MONITORING.md src/adreno-stats packaging/adreno.page packaging/uke-adaptive-display.target packaging/80-uke-adaptive-display.preset packaging/71-uke-tablet-mode.rules packaging/61-uke-display-ddc.rules packaging/60-block-scheduler.rules packaging/powerdevilrc packaging/kwinoutputconfig.json packaging/60-uke-display-ddc.conf packaging/30-uke-s2idle.conf packaging/uke-suspend.conf src/uke-ddc-config tests/ddc-config.sh | gzip -n > "$$top/SOURCES/uke-adaptive-display-1.0.16.tar.gz"
 	cp packaging/uke-adaptive-display.spec "$$top/SPECS/"
 	rpmbuild -bs --nodeps --target aarch64 --define "_topdir $$top" "$$top/SPECS/uke-adaptive-display.spec"
 	install -m644 "$$top/SRPMS/"*.src.rpm '$(outdir)/'
-
 test-native:
 	mkdir -p build
 	$(CXX) -std=c++20 -O2 -Wall -Wextra -Werror src/adreno-stats/tests.cpp -o build/adreno-counter-test
 	build/adreno-counter-test
 
+.PHONY: test-bluetooth
+test-bluetooth:
+	mkdir -p build
+	$(CXX) -std=c++20 -O2 -Wall -Wextra -Werror -Wno-unused-function tests/bluetooth-address.cpp -o build/bluetooth-address-test
+	build/bluetooth-address-test
+
 test-plugin:
 	cmake -S src/adreno-stats -B build/adreno-stats -DCMAKE_BUILD_TYPE=RelWithDebInfo
 	cmake --build build/adreno-stats --parallel 4
 	ctest --test-dir build/adreno-stats --output-on-failure
-
-.PHONY: power-srpm
-power-srpm:
-	archive=referances/power-profiles-daemon/power-profiles-daemon-0.30.tar.gz
-	echo "90f2c95024861d9f4062abedd514084939224e7a49edd468f001af7260ec8e6c  $$archive" | sha256sum -c -
-	top="$$(realpath -m build/power-srpm/rpmbuild)"
-	mkdir -p "$$top"/{SOURCES,SPECS,SRPMS}
-	cp "$$archive" "$$top/SOURCES/"
-	stage="$$(mktemp -d build/power-source.XXXXXX)"
-	mkdir -p "$$stage/patches" "$$stage/tests" "$$stage/src" "$$stage/packaging" "$$stage/docs"
-	cp src/ppd-driver-uke-cpufreq.* "$$stage/src/"
-	cp patches/0001-ppd-native-uke-cpu-driver.patch "$$stage/patches/"
-	cp tests/ppd-cpufreq.cpp "$$stage/tests/"
-	cp packaging/60-uke-cpufreq.conf "$$stage/packaging/"
-	cp packaging/uke-power-profile.conf packaging/uke-power-profile.cil "$$stage/packaging/"
-	cp docs/POWER-PROFILES.md "$$stage/docs/"
-	tar --sort=name --mtime=@1792195200 --owner=0 --group=0 --numeric-owner -C "$$stage" -cf - . | gzip -n > "$$top/SOURCES/uke-power-profile-backend-0.1.0.tar.gz"
-	cp packaging/uke-power-profile-backend.spec "$$top/SPECS/"
-	rpmbuild -bs --nodeps --target aarch64 --define "_topdir $$top" "$$top/SPECS/uke-power-profile-backend.spec"
-
-.PHONY: bluetooth-srpm
-bluetooth-srpm:
-	top="$$(realpath -m build/bluetooth-srpm/rpmbuild)"
-	mkdir -p "$$top"/{SOURCES,SPECS,SRPMS}
-	tar --sort=name --mtime=@1792195200 --owner=0 --group=0 --numeric-owner \
-	 --transform='s,^,uke-bluetooth-0.1.0/,' -cf - LICENSE LICENSE.GPL-3.0 src/bluetooth-address.cpp \
-	 tests/bluetooth-address.cpp packaging/uke-bluetooth-address.service packaging/70-uke-bluetooth.rules \
-	 docs/BLUETOOTH.md | gzip -n > "$$top/SOURCES/uke-bluetooth-0.1.0.tar.gz"
-	cp packaging/uke-bluetooth.spec "$$top/SPECS/"
-	rpmbuild -bs --nodeps --target aarch64 --define "_topdir $$top" "$$top/SPECS/uke-bluetooth.spec"
 
 # Host-only OEM data conversion; this executable is not a tablet startup task.
 .PHONY: test-oem-brightness

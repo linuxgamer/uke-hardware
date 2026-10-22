@@ -1,0 +1,24 @@
+[Unit]
+Description=Classify the Uke root partition once per installation
+ConditionFirmware=device-tree-compatible(xiaomi,uke)
+ConditionPathExists=!/var/lib/senemos/installation/profile
+After=local-fs.target
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/senemos-uke/uke-install-profile initialize
+StateDirectory=senemos/installation
+StateDirectoryMode=0700
+TimeoutStartSec=15
+MemoryMax=16M
+TasksMax=8
+UMask=0077
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ReadWritePaths=/etc/systemd/system /etc/tmpfiles.d
+
+[Install]
+WantedBy=multi-user.target

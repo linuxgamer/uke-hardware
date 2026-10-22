@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply saved Uke wake permissions before sleep
+After=systemd-udev-trigger.service
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecCondition=/usr/bin/uke-control wake check
+ExecStart=/usr/bin/uke-control wake apply
+TimeoutStartSec=15
+UMask=0077

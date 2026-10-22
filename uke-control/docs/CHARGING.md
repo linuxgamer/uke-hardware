@@ -123,3 +123,24 @@ readback are refused; no general profile, numerical pack limit or service is
 created. There is no fallback from this action to a generic/raw writer. Its
 success describes configuration; physical charge-stop and reboot persistence
 must be tested separately. Failed writes may be ambiguous and are not retried.
+# Moisture protection candidate — 20 October 2026
+
+`charge protection` reads firmware moisture enable/status; `charge protection-status`
+reads cached metadata without a firmware request. `charge notifications` runs in
+the original desktop user session and sends freedesktop critical notifications.
+Missing data never clears a wet warning. No desktop application is forked.
+
+The companion qualified helper can latch input suspension while moisture is
+reported, retaining it through errors and requiring stable clear reports before
+restoring only its own inhibit. `charge moisture-enable` can enable the detector
+offline after qualification; no disable or force-resume command is exposed.
+
+The shipped profile is unqualified. These source paths require the matching
+version-2 kernel and reviewed firmware, sensor and electrical-effect evidence.
+They are not active protection on the previously observed kernel 7.2.11-6.
+
+Private device reports capture the battery snapshot and fixed control,
+admission, protocol and cached-protection metadata. Missing or refused data
+retains its command receipt; it does not become success. These private logs do
+not enter the generated anonymous GitHub summary. Collection does not issue
+firmware settings GET/SET requests or start charging services.

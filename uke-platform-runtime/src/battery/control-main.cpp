@@ -78,7 +78,7 @@ public:
     void write(const std::string &name, const std::string &value) override {
         if (name != "uke_charge_lease" && name != "uke_charge_thresholds" && name != "uke_charge_refresh" &&
             name != "uke_charge_enable_existing_cap" && name != "uke_charge_apply_existing_cap" &&
-            name != "uke_charge_current_profile" && name != "uke_charge_current_ua")
+            name != "uke_charge_current_profile" && name != "uke_charge_current_ua" && name != "uke_charge_moisture_enable" && name != "uke_charge_wet_guard")
             fail("control_attribute_forbidden");
         const int fd = openat(directory_, name.c_str(), O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
         if (fd < 0) fail("control_attribute_not_writable");
@@ -141,6 +141,39 @@ void emit_admission(const Admission &a) {
         << "\",\"lease_acquisition_verified\":false,\"policy_lock_checked\":false,\"runtime_measurements_checked\":false"
         << ",\"firmware_rpc_performed\":false,\"service_activation_performed\":false,\"applied\":false,\"physical_charge_stopped\":null}\n";
 }
+void emit_protection(const Protection &p, bool enable_request) {
+    std::cout << "{\"schema_version\":1,\"kind\":\"uke_charge_protection\",\"firmware_get_complete\":true"
+        << ",\"reported_moisture_detection_enabled\":" << (p.enabled ? "true" : "false")
+        << ",\"firmware_moisture_status_raw\":" << unsigned(p.moisture_reported)
+        << ",\"received_boottime_ns\":" << p.received_ns
+        << ",\"enable_request_completed\":" << (enable_request ? "true" : "false")
+        << ",\"firmware_set_may_have_been_performed\":" << (enable_request ? "true" : "false")
+        << ",\"moisture_disable_writer\":false,\"atomic_remote_snapshot\":false"
+        << ",\"wet_response_qualified\":false,\"physical_charge_stopped\":null"
+        << ",\"jeita_qualified\":false,\"autonomous_ovp_ocp_qualified\":false,\"firmware_watchdog_qualified\":false}\n";
+}
+std::string protection_cache_report(ProtectionCache p) {
+    const auto time = now();
+    p.valid = p.valid && p.received_ns && time >= p.received_ns && time - p.received_ns <= 5000000000ULL;
+    std::ostringstream report;
+    report << "{\"schema_version\":1,\"kind\":\"uke_charge_protection_cache\",\"metadata_only\":true"
+        << ",\"fresh\":" << (p.valid ? "true" : "false")
+        << ",\"reported_moisture_detection_enabled\":" << (p.enabled ? "true" : "false")
+        << ",\"reported_moisture\":" << (p.moisture_reported ? "true" : "false")
+        << ",\"wet_latched\":" << (p.wet_latched ? "true" : "false")
+        << ",\"faults\":" << p.faults
+        << ",\"input_suspend_readback\":" << (p.valid && p.input_suspend_readback ? "true" : "false")
+        << ",\"physical_charge_stopped\":null,\"firmware_rpc_performed\":false}\n";
+    return report.str();
+}
+void emit_protection_cache(ProtectionCache p) {
+    std::cout << protection_cache_report(p) << std::flush;
+}
+void emit_protection_change(std::ostream &output, const std::string &report, std::string &previous) {
+    if (report == previous) return;
+    output << report << std::flush;
+    previous = report;
+}
 void emit_protocols(const ProtocolState &s, bool available, const std::string &reason) {
     const auto time = now();
     const bool fresh = available && s.cache_matches_epochs && s.received_ns && s.received_ns <= time &&
@@ -181,6 +214,7 @@ void emit(const State &s, const Profile &p, const char *operation, bool applied,
         << ",\"start_percent\":" << (s.verified ? std::to_string(s.enabled ? s.start : 0) : "null")
         << ",\"end_percent\":" << (s.verified ? std::to_string(s.enabled ? s.end : 100) : "null")
         << ",\"verified_boottime_ns\":" << s.verified_ns << ",\"applied\":" << (applied ? "true" : "false")
+        << ",\"protection_backend_compiled\":" << (s.protection_compiled ? "true" : "false")
         << ",\"current_backend_compiled\":" << (s.current_compiled ? "true" : "false")
         << ",\"current_readback_verified\":" << (s.current_verified ? "true" : "false")
         << ",\"reported_constant_charge_current_ua\":" << (s.current_verified ? std::to_string(s.current_ua) : "null")
@@ -206,18 +240,21 @@ int main(int argc, char **argv) {
     const bool admission_query = argc == 2 && std::strcmp(argv[1], "admission") == 0;
     const bool protocol_query = argc == 2 && std::strcmp(argv[1], "protocols") == 0;
     const bool settings_query = argc == 2 && std::strcmp(argv[1], "settings") == 0;
+    const bool protection_query = argc == 2 && std::strcmp(argv[1], "protection") == 0;
     const bool preconfigured_cap = argc == 2 && std::strcmp(argv[1], "enable-cap80") == 0;
     const bool apply_cap = argc == 2 && std::strcmp(argv[1], "apply-cap80") == 0;
     try {
         if (argc == 2 && std::string(argv[1]) == "capabilities") {
-            std::cout << "{\"schema_version\":1,\"kind\":\"uke_charge_control_capabilities\",\"threshold_transport_implemented\":true,\"current_transport_implemented\":true,\"automatic_policy_implemented\":true,\"admission_preflight_implemented\":true,\"settings_query_implemented\":true,\"preconfigured_cap_enable_implemented\":true,\"preconfigured_cap_apply_implemented\":true,\"preconfigured_cap_application_effect_qualified\":false,\"preconfigured_cap_scope\":\"offline_existing_70_80_only\",\"qualification_required\":true,\"active_qualification\":null,\"voltage_writer\":false,\"physical_charge_stopped\":null}\n";
+            std::cout << "{\"schema_version\":1,\"kind\":\"uke_charge_control_capabilities\",\"moisture_diagnostic_implemented\":true,\"moisture_enable_only_implemented\":true,\"wet_input_inhibit_implemented\":true,\"external_thermal_guard_implemented\":true,\"protection_qualification_required\":true,\"wet_response_qualified\":false,\"threshold_transport_implemented\":true,\"current_transport_implemented\":true,\"automatic_policy_implemented\":true,\"admission_preflight_implemented\":true,\"settings_query_implemented\":true,\"preconfigured_cap_enable_implemented\":true,\"preconfigured_cap_apply_implemented\":true,\"preconfigured_cap_application_effect_qualified\":false,\"preconfigured_cap_scope\":\"offline_existing_70_80_only\",\"qualification_required\":true,\"active_qualification\":null,\"voltage_writer\":false,\"physical_charge_stopped\":null}\n";
             return 0;
         }
         if (argc == 2 && std::string(argv[1]) == "--help") {
-            std::cout << "uke-charge-control capabilities | status | admission | protocols | settings\n"
+            std::cout << "uke-charge-control capabilities | status | admission | protocols | settings | protection | protection-status\n"
+                << "uke-charge-control protection-serve  (fixed observations; inhibition requires qualification)\n"
                 << "uke-charge-control verify | cap80 | band80-90 | threshold-off | pair START END | serve\n"
                 << "uke-charge-control slow | automatic | profile-restore\n"
                 << "uke-charge-control enable-cap80 | apply-cap80\n"
+                << "uke-charge-control moisture-enable  (qualified profile, offline, enable-only)\n"
                 << "settings requires root and performs three diagnostic GETs without control permission.\n"
                 << "enable-cap80 requires root and the matched offline-only existing70/80-cap interface.\n"
                 << "apply-cap80 sends the already enabled70/80 target once, offline; firmware receipt is not charge-stop proof.\n"
@@ -228,16 +265,55 @@ int main(int argc, char **argv) {
         if (argc < 2) fail("control_command_required");
         const std::string command(argv[1]);
         if ((command == "pair" && argc != 4) || (command != "pair" && argc != 2)) fail("control_arguments_invalid");
-        if (command != "status" && command != "admission" && command != "protocols" && command != "settings" && command != "enable-cap80" && command != "apply-cap80" && command != "verify" && command != "cap80" && command != "band80-90" &&
+        if (command != "status" && command != "admission" && command != "protocols" && command != "settings" && command != "protection" && command != "protection-status" && command != "protection-serve" && command != "moisture-enable" && command != "enable-cap80" && command != "apply-cap80" && command != "verify" && command != "cap80" && command != "band80-90" &&
             command != "pair" && command != "serve" && command != "threshold-off" &&
             command != "slow" && command != "automatic" && command != "profile-restore") fail("control_command_unsupported");
         io = std::make_unique<Sysfs>();
         if (command == "status") { emit(io->state(), {}, "metadata_only", false, false); return 0; }
+        if (command == "protection-status") {
+            emit_protection_cache(parse_protection_cache(io->read_attribute("uke_charge_protection_state")));
+            return 0;
+        }
         if (protocol_query) {
             emit_protocols(parse_protocol_state(io->read_attribute("uke_usb_source_state")), true, "cached_legacy_wire6_not_protocol_qualification");
             return 0;
         }
         if (geteuid() != 0) fail("control_root_required");
+        if (command == "protection-serve") {
+            signal(SIGTERM, stop); signal(SIGINT, stop);
+            std::string previous_report;
+            while (!stopping) {
+                try {
+                    Lock owner;
+                    const auto before = context(*io);
+                    const auto p = parse_protection(io->read_attribute("uke_charge_protection"));
+                    const auto after = context(*io);
+                    if (!protection_match_context(p, before, after)) fail("protection_epoch_or_time_changed");
+                    const auto profile = resolve(after);
+                    if (profile.qualified) {
+                        Session guard(*io, profile, after.state);
+                        guard.wet_guard(now());
+                        if (!p.enabled) guard.enable_moisture(now());
+                        guard.revoke();
+                    }
+                    emit_protection_change(std::cout,
+                        protection_cache_report(parse_protection_cache(io->read_attribute("uke_charge_protection_state"))), previous_report);
+                } catch (const std::exception &e) {
+                    // Transport quarantine and the kernel's uncertain-write latch forbid SET replay.
+                    emit_protection_change(std::cerr, "protection observation: " + identifier(e.what()) + '\n', previous_report);
+                }
+                for (unsigned ticks = 0; ticks < 20 && !stopping; ++ticks)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            return 0;
+        }
+        if (protection_query) {
+            Lock owner;
+            const auto before = context(*io);
+            const auto p = parse_protection(io->read_attribute("uke_charge_protection"));
+            if (!protection_match_context(p, before, context(*io))) fail("protection_epoch_or_time_changed");
+            emit_protection(p, false); return 0;
+        }
         if (apply_cap) {
             Lock owner;
             const auto before = context(*io);
@@ -297,6 +373,16 @@ int main(int argc, char **argv) {
         std::unique_ptr<Lock> policy_lock;
         if (current_action) policy_lock = std::make_unique<Lock>("policy.lock");
         session = std::make_unique<Session>(*io, profile, initial.state);
+        if (command == "moisture-enable") {
+            Lock lock;
+            session->enable_moisture(now());
+            const auto before = context(*io);
+            const auto p = parse_protection(io->read_attribute("uke_charge_protection"));
+            if (!protection_match_context(p, before, context(*io)) || !p.enabled)
+                fail("moisture_enable_readback_not_verified");
+            emit_protection(p, true);
+            session->revoke(); session.reset(); return 0;
+        }
         if (command == "serve" || command == "automatic") {
             signal(SIGTERM, stop); signal(SIGINT, stop);
             Automatic automatic;
@@ -342,6 +428,11 @@ int main(int argc, char **argv) {
         }
         session->revoke(); session.reset(); return 0;
     } catch (const std::exception &e) {
+        if (protection_query) {
+            std::cout << "{\"schema_version\":1,\"kind\":\"uke_charge_protection\",\"firmware_get_complete\":false,\"reason\":\""
+                << identifier(e.what()) << "\",\"firmware_set_may_have_been_performed\":false,\"physical_charge_stopped\":null}\n";
+            return 69;
+        }
         if (apply_cap) {
             std::cout << "{\"schema_version\":1,\"kind\":\"uke_preconfigured_charge_cap\",\"operation\":\"apply_existing_70_80_once\",\"reason\":\""
                 << identifier(e.what()) << "\",\"request_sent\":null,\"firmware_reply_received\":null,\"applied\":null"

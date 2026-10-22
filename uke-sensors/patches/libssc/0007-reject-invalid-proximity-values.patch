@@ -1,0 +1,60 @@
+From: Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com>
+Subject: [PATCH] proximity: drop invalid states without terminating the client
+
+Keep the existing near/far contract and free every decoded message. An unknown
+integer must not abort SensorProxy. Validate the Davinci float before any
+conversion so fractional, non-finite and out-of-range input cannot become a
+false near/far report or undefined float-to-integer conversion.
+
+Reviewed against libssc v0.4.4 and upstream main
+4e4c6c8cc702a754bd700506c01961aaf971a23b. No Uke calibration, protocol field
+or board setting is introduced. Existing GPL-3.0-or-later attribution remains.
+
+Signed-off-by: Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com>
+---
+--- a/src/libssc-sensor-proximity.c
++++ b/src/libssc-sensor-proximity.c
+@@ -89,16 +89,12 @@
+ 				return;
+ 			}
+ 
+-			switch (msg->near) {
+-				case SSC_SENSOR_PROXIMITY_NEAR:
+-					near = true;
+-					break;
+-				case SSC_SENSOR_PROXIMITY_FAR:
+-					near = false;
+-					break;
+-				default:
+-					g_assert_not_reached ();
++			if (msg->near != SSC_SENSOR_PROXIMITY_NEAR && msg->near != SSC_SENSOR_PROXIMITY_FAR) {
++				ssc_proximity_response__free_unpacked (msg, NULL);
++				g_warning ("Invalid proximity state");
++				return;
+ 			}
++			near = msg->near == SSC_SENSOR_PROXIMITY_NEAR;
+ 
+ 			ssc_proximity_response__free_unpacked (msg, NULL);
+ 		/* xiaomi-davinci uses REPORT_MEASUREMENT and its own proximity response */
+@@ -120,16 +116,12 @@
+ 
+ 			memcpy(&data, msg->data->data, sizeof(ProximityDataDavinci));
+ 
+-			switch ((int)data.near) {
+-				case SSC_SENSOR_PROXIMITY_NEAR:
+-					near = true;
+-					break;
+-				case SSC_SENSOR_PROXIMITY_FAR:
+-					near = false;
+-					break;
+-				default:
+-					g_assert_not_reached ();
++			if (data.near != SSC_SENSOR_PROXIMITY_NEAR && data.near != SSC_SENSOR_PROXIMITY_FAR) {
++				ssc_proximity_response_davinci__free_unpacked (msg, NULL);
++				g_warning ("Invalid Xiaomi Davinci proximity state");
++				return;
+ 			}
++			near = data.near == SSC_SENSOR_PROXIMITY_NEAR;
+ 
+ 			ssc_proximity_response_davinci__free_unpacked (msg, NULL);
+ 		} else {

@@ -1,5 +1,13 @@
 # Original KDE GPU monitoring — 19 October 2026
 
+Integration 14 corrects the bounded Qt reader for sysfs files, whose reported
+PAGE_SIZE is larger than their numeric payload. Integration 13 exports sensor
+metadata on Linux 7.2.11-6 but returns unavailable values; that observation does
+not qualify monitoring. The correction passes a real sysfs regression and the
+plugin loader test in the Fedora SDK. Its installed tablet result remains a
+separate check. The redundant plugin metadata Id is also removed to resolve
+the observed KPlugin warning.
+
 Environment: POCO Pad X1, Fedora Rawhide AArch64 and original KDE 6.8. Integration
 13 adds a native C++ SystemStats plugin and an Adreno GPU monitor page. This is
 an extension using the original library API; no KDE application is forked,

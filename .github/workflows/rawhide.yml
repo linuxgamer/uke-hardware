@@ -1,0 +1,64 @@
+name: Track Fedora Rawhide source packages
+on:
+  schedule:
+    - cron: '25 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: support-rawhide-tracking
+  cancel-in-progress: false
+jobs:
+  sources:
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:rawhide
+    steps:
+      - name: Install official host source tools
+        run: dnf5 -y install git curl jq rpm-build rpm-sign cpio binutils coreutils make
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Refresh signed source locks
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash packaging/families/host/track-rawhide.sh
+      - name: Commit changed locks and start the existing validation gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          paths=(uke-desktop-packaging/manifests/native-runtime.json uke-desktop-packaging/src/native-runtime/fedora-exported-symbols.txt packaging/families/families.json)
+          if git diff --quiet -- "${paths[@]}"; then
+            # A newer source may have waited behind an older in-flight build.
+            pending=false
+            for family in uke-additional uke-power uke-sensors; do
+              version=$(jq -er --arg family "$family" '.families[]|select(.name==$family)|.version+"-"+((.release // 1)|tostring)' packaging/families/families.json)
+              curl --fail --silent --show-error --max-time 30 "https://copr.fedorainfracloud.org/api_3/build/list?ownername=mcc45tr&projectname=uke-linux-test&packagename=$family&limit=100" > /tmp/family-builds.json
+              jq -e '.items|type=="array"' /tmp/family-builds.json >/dev/null
+              if jq -e --arg v "$version" 'any(.items[]; (.source_package.version // "") == $v or ((.source_package.version // "")|startswith($v+".")))' /tmp/family-builds.json >/dev/null; then continue; fi
+              if jq -e 'any(.items[]; .state|IN("running","pending","starting","importing","waiting"))' /tmp/family-builds.json >/dev/null; then continue; fi
+              if jq -e '.items[0]|.state=="failed" and .source_package==null' /tmp/family-builds.json >/dev/null; then echo "Inspect uncertain source failure for $family before another request" >&2; exit 1; fi
+              pending=true
+            done
+            if [[ $pending == false ]]; then echo 'Rawhide locks unchanged; no unrequested family revision'; exit 0; fi
+            lock_commit=$(git log -1 --format=%H -- uke-desktop-packaging/manifests/native-runtime.json)
+            before=$(git rev-parse "$lock_commit^")
+          else
+            before=$(git rev-parse HEAD)
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add -- "${paths[@]}"
+            git commit -m 'Track current signed Fedora Rawhide source packages'
+            git push origin HEAD:main
+          fi
+          # GITHUB_TOKEN pushes do not trigger push workflows; dispatch explicitly.
+          jq -n --arg before "$before" '{ref:"main",inputs:{before:$before}}' > /tmp/validate-dispatch.json
+          curl --fail --silent --show-error --proto '=https' --max-time 45 \
+            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' -H 'Content-Type: application/json' \
+            --data-binary @/tmp/validate-dispatch.json \
+            "https://api.github.com/repos/$GH_REPOSITORY/actions/workflows/validate.yml/dispatches"
+          echo "Validation requested from $before; only validated family changes request test COPR builds."

@@ -20,6 +20,14 @@
   },
   "protocol_sources": [
     {
+      "repository": "https://github.com/vember31/android_device_xiaomi_uke-kernel",
+      "commit": "9bb7c4331be7205fabf5427b5654555763304d20",
+      "path": "modules/vendor/nt36532_touch.ko",
+      "sha256": "cee722d7baf86ecadb8992038781f48ac6098c54964c31c26113420695e9eca8",
+      "class": "direct Uke OEM GPL module; watchdog and idle-reset disassembly",
+      "observed_contract": "Six FD/FE payload bytes, eleven consecutive packets, FE idle reset 0xaa and 15 ms wait before firmware reload"
+    },
+    {
       "repository": "https://github.com/MiCode/Xiaomi_Kernel_OpenSource",
       "commit": "77dc8e2290f3f5f15861821564f68d30ea193449",
       "path": "drivers/input/touchscreen/nt36532",

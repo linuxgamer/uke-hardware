@@ -28,6 +28,16 @@ int main() {
     reset({{0,"{\"kind\":\"uke_charge_settings\",\"applied\":false}\n"}});
     assert(uke::charge::control_query("settings").status==0);
     assert((calls==std::vector<std::vector<std::string>>{{"/usr/libexec/uke-charge-control","settings"}}));
+    reset({{0,"cached protection"}});
+    assert(uke::charge::control_query("protection-status").status==0);
+    assert((calls==std::vector<std::vector<std::string>>{{"/usr/libexec/uke-charge-control","protection-status"}}));
+    reset({{0,"moisture enabled"}});
+    assert(uke::charge::enable_moisture().status==0);
+    assert((calls==std::vector<std::vector<std::string>>{{"/usr/libexec/uke-charge-control","moisture-enable"}}));
+    reset({});
+    bool mutation_rejected=false;
+    try{uke::charge::control_query("moisture-enable");}catch(const std::exception&){mutation_rejected=true;}
+    assert(mutation_rejected&&calls.empty());
     reset({});
     bool query_rejected=false;
     try{uke::charge::control_query("verify");}catch(const std::exception&){query_rejected=true;}

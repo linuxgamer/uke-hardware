@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <cstdint>
+#include <array>
 #include <string>
 #include <vector>
 #include <sys/types.h>
 
 namespace uke::battery::control {
 struct State {
+    bool protection_compiled = false;
     bool compiled = false, live = false, enabled = false, verified = false, standard_clients = false;
     bool current_compiled = false, current_admitted = false, current_verified = false, measurement_valid = false;
     uint32_t generation = 0, firmware = 0, source = 0, start = 0, end = 0, current_ua = 0, voltage_uv = 0;
@@ -35,6 +37,19 @@ struct Settings {
     bool enabled = false;
 };
 Settings parse_settings(const std::string &text);
+struct Protection {
+    uint64_t instance = 0, received_ns = 0;
+    uint32_t generation = 0, firmware = 0, source = 0;
+    bool enabled = false, moisture_reported = false;
+};
+Protection parse_protection(const std::string &text);
+struct ProtectionCache : Protection {
+    uint32_t faults = 0;
+    bool valid = false, wet_latched = false, input_suspend_readback = false;
+    uint64_t dry_since_ns = 0;
+};
+ProtectionCache parse_protection_cache(const std::string &text);
+bool protection_match_context(const Protection &, const Context &, const Context &);
 bool settings_match_context(const Settings &settings, const Context &before, const Context &after);
 bool preconfigured_cap_context_matches(const Context &before, const Context &after);
 struct Band {
@@ -49,6 +64,8 @@ struct Profile {
     uint32_t minimum_ua = 0, maximum_ua = 0, slow_ua = 0, restore_ua = 0, source_budget_ua = 0, increase_step_ua = 0;
     uint64_t expires_ns = 0, reviewed_ns = 0, lease_ns = 0, increase_dwell_ns = 0, measurement_max_age_ns = 0;
     std::vector<Band> bands;
+    struct ThermalRange { int32_t minimum_mC = 0, maximum_mC = 0; };
+    std::array<ThermalRange, 3> external_thermal{};
     std::string evidence, reason = "control_unqualified";
 };
 // These records attest reviewed evidence, not authenticated remote firmware.
@@ -94,6 +111,8 @@ public:
     State refresh(uint64_t now);
     State thresholds(uint32_t start, uint32_t end, uint64_t now);
     State current(uint32_t microamperes, uint64_t now);
+    void enable_moisture(uint64_t now);
+    void wet_guard(uint64_t now);
     bool write_attempted() const { return write_attempted_; }
     // Revocation removes permission, not an already-applied firmware setting.
     void revoke();

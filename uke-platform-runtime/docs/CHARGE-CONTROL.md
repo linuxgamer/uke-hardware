@@ -1,5 +1,62 @@
 # Uke charging control source candidate — 18 October 2026
 
+## 20 October 2026: moisture and external thermal protection candidate
+
+The matching kernel candidate uses control metadata/lease version 2. Older
+clients cannot acquire a lease without the three external temperature ranges.
+The default profile remains unqualified with null limits and proofs. No active
+tablet protection or wet-port electrical response is established by this source.
+
+`uke-control charge protection` performs two fixed root-only firmware GETs for
+moisture enable/status. `charge protection-status` reads only the cached kernel
+state and is available to the desktop session. Unknown, invalid, stale or failed
+readings do not establish a dry port. `charge moisture-enable` is an offline,
+qualified, enable-only request with readback; no disable command is supplied.
+
+The bound-provider udev event starts `uke-charge-protection.service`, which
+observes moisture every two seconds. Without a qualified profile it observes
+and reports only. With reviewed protection evidence, it requests the fixed
+OS3.0.304.0 `input_suspend` contract when moisture is reported. The kernel keeps
+a wet latch and blocks custom charge controls. An uncertain SET is quarantined;
+it is not automatically retried or treated as an effective electrical stop.
+
+The qualified periodic path also latches board/battery thermal, health,
+voltage/current and measurement faults. Disabled moisture detection is an
+unavailable-protection fault. Positive SDP budget writes and custom charging
+commands remain blocked while a fault is latched. `periodic_charge_guard` proof
+must establish that the supplied ranges are valid across the intended charge,
+precharge and recovery states; general AP-control limits alone are insufficient.
+Thermal and electrical alerts use a distinct charging-safety notification.
+
+Clearing requires at least three fresh clear reports spanning 30 seconds with
+no observation gap above five seconds, enabled detection, fresh admissible
+battery/board temperatures and voltage, and matched lifecycle evidence. This
+is a software dwell, not a guarantee that a connector has physically dried.
+Only an input inhibit established by this controller may be restored. A foreign
+inhibit, source/firmware change, invalid sensor, failed readback or ambiguous
+command prevents automatic restoration. Reboot and AP/firmware-failure behavior
+remain separate acceptance work; this service cannot replace autonomous hardware
+or firmware protection before Linux starts.
+
+The original desktop notification service receives critical, non-expiring
+moisture notices from the unprivileged `uke-control charge notifications` user
+service. Repeated samples replace/suppress duplicate notices. Loss of previously
+verified inhibition changes the warning to state that stopping charging could
+not be verified. Only a fresh clear, unlatched state clears the warning.
+
+Profile qualification additionally requires `safety_backend` equal to
+`uke_os3_0_304_input_suspend53_v1`, proofs for moisture ABI/response, the external
+thermal path, input-suspend ABI/effect/restoration, and independent milli-Celsius
+ranges for `charger`, `connector` and `connector2`. These records do not
+authenticate executing firmware. No borrowed limits are provided. The kernel
+reads fixed IIO channels 0x749, 0x747 and 0x14d; the board thermal zones poll at
+one second without changing their OEM trip values.
+
+`manifests/protection-readiness.json` lists the implemented and unresolved
+firmware/protection roles. JEITA, CV, termination, watchdogs and pack OVP/OCP
+remain under their original owners; no guessed vendor setters, factory access,
+PD negotiation or replacement pack-protection algorithm is added.
+
 Initial environment: source editing on the development host. The original
 source review did not perform build, test, installation or tablet operations.
 Subsequent host and installed results are recorded below and in the component
@@ -306,3 +363,18 @@ The kernel keeps both restricted writers quarantined after an attempt for that
 driver instance. Ambiguous delivery, timeouts and lifecycle failures never cause
 replay, undo, a service or persisted intent. A reboot is not permission to retry
 an unresolved physical outcome. General control admission remains independent.
+
+## Critical-battery action — 20 October 2026
+
+The package supplies `/etc/UPower/UPower.conf.d/60-uke-battery-safety.conf` for
+original UPower 1.91.5 or newer. It requests `PowerOff` at the existing critical
+action threshold, uses percentage policy and disables risky-action overrides.
+It does not supply new numerical thresholds or trigger a power action. Later
+administrator drop-ins remain effective. This desktop policy is separate from
+firmware charging, moisture inhibition and physical battery protection.
+
+The protection observer logs its first state/error and subsequent changes only.
+Moisture, faults, freshness and input-suspend readback remain in the compared
+report; an error-to-healthy transition is logged even when the healthy fields
+match an earlier report. Firmware polling and the two-second guard cadence are
+unchanged. Desktop cached-status queries still return a full report each time.

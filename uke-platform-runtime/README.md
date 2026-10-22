@@ -36,6 +36,10 @@ read-only JSON and D-Bus snapshots. Missing/stale data stay unavailable. Health,
 EFC and duration models share one session across CLI/daemon observations; unqualified
 firmware/pack data do not produce precise health or time claims. New charging
 controls, thresholds, high power, PPS and EPR remain disabled.
+Version 1.1.0 collects D-Bus telemetry on demand, reuses a snapshot for thirty
+seconds and exits after sixty seconds without client activity. Capability
+queries do not collect measurements. Original UPower remains responsible for
+normal desktop battery reporting; no additional service is enabled by default.
 The model identity resolver requires privileged, matching per-boot evidence with
 an expiry and never enables an actuator. See
 [runtime identity and recovery](docs/RUNTIME-PROFILE.md).

@@ -1,0 +1,15 @@
+[Unit]
+Description=Uke Control USB-C moisture notifications
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionUser=!root
+ConditionPathExists=/usr/libexec/uke-charge-control
+
+[Service]
+ExecStart=/usr/bin/uke-control charge notifications
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=graphical-session.target

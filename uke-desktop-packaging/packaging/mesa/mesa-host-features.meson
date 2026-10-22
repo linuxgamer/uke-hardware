@@ -1,0 +1,7 @@
+executable(
+  'uke-mesa-host-features',
+  'uke-native-contract/mesa-host-features.cpp',
+  dependencies : [dep_llvm, idep_mesautil],
+  include_directories : [inc_include, inc_src],
+  install : false,
+)

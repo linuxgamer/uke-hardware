@@ -15,9 +15,12 @@ cp src/nvt_touch_core.hpp LICENSE "$stage/"
 awk '/constexpr int kShortAxisMaximum/{skip=1} skip && /^struct Profile/{skip=0} !skip{print}' \
  src/nvt_touch_core.cpp > "$stage/nvt_touch_core.cpp"
 patch --batch --fuzz=0 -d "$stage" -p1 < "$root/patches/nt36532-thp-runtime-geometry.patch"
+patch --batch --fuzz=0 -d "$stage" -p1 < "$root/patches/nt36532-thp-bounded-assignment.patch"
+patch --batch --fuzz=0 -d "$stage" -p1 < "$root/patches/nt36532-thp-tracking-id-wrap.patch"
+patch --batch --fuzz=0 -d "$stage" -p1 < "$root/patches/nt36532-thp-lifetime-counters.patch"
 cd "$stage"
 printf '%s\n' \
- '38eae0fd49885729d79bf718c4a47d16f96c9e60b9ac4aee5e5510b558924a96  nvt_touch_core.cpp' \
- '6a0312308c22c4562205317078f01684153ca9a1f7a425f26ea96e003d59a1c8  nvt_touch_core.hpp' | sha256sum -c -
+ '7619b12a440be1f64cacb47b4b617fcfcf4486853822323f8d143c6e73aba9b1  nvt_touch_core.cpp' \
+ '473a2b7b71cea8f7143706ac563c6c9b81be1b31e51d841dec37a404c2c1ee94  nvt_touch_core.hpp' | sha256sum -c -
 mkdir -p "$root/src/upstream/nt36532-thp"
 cp nvt_touch_core.cpp nvt_touch_core.hpp LICENSE "$root/src/upstream/nt36532-thp/"

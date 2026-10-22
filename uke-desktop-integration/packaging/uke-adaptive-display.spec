@@ -1,6 +1,6 @@
 Name: uke-adaptive-display
-Version: 0.1.0
-Release: 13%{?dist}
+Version: 1.0.16
+Release: 1%{?dist}
 Summary: Standard desktop sensor and display policy for Uke
 License: MIT
 URL: https://github.com/MCC45TR/uke-linux-hardware-support
@@ -48,6 +48,7 @@ install -Dm644 packaging/71-uke-tablet-mode.rules %{buildroot}%{_udevrulesdir}/7
 install -Dm644 packaging/61-uke-display-ddc.rules %{buildroot}%{_udevrulesdir}/61-uke-display-ddc.rules
 install -Dm644 packaging/60-block-scheduler.rules %{buildroot}%{_sysconfdir}/udev/rules.d/60-block-scheduler.rules
 install -Dm644 packaging/powerdevilrc %{buildroot}%{_sysconfdir}/xdg/powerdevilrc
+install -Dm644 packaging/kwinoutputconfig.json %{buildroot}%{_sysconfdir}/xdg/kwinoutputconfig.json
 install -Dm755 src/uke-ddc-config %{buildroot}%{_libexecdir}/senemos-uke/uke-ddc-config
 install -Dm644 packaging/60-uke-display-ddc.conf %{buildroot}%{_userunitdir}/plasma-powerdevil.service.d/60-uke-display-ddc.conf
 install -Dm644 packaging/30-uke-s2idle.conf %{buildroot}%{_prefix}/lib/systemd/sleep.conf.d/30-uke-s2idle.conf
@@ -79,6 +80,7 @@ systemd-tmpfiles --dry-run --create packaging/uke-suspend.conf
 %{_libdir}/qt6/plugins/ksystemstats/libuke_adreno.so
 %{_datadir}/plasma-systemmonitor/adreno.page
 %config(noreplace) %{_sysconfdir}/xdg/powerdevilrc
+%config(noreplace) %{_sysconfdir}/xdg/kwinoutputconfig.json
 %config(noreplace) %{_sysconfdir}/udev/rules.d/60-block-scheduler.rules
 %{_unitdir}/uke-adaptive-display.target
 %{_presetdir}/80-uke-adaptive-display.preset
@@ -90,6 +92,20 @@ systemd-tmpfiles --dry-run --create packaging/uke-suspend.conf
 %{_tmpfilesdir}/uke-suspend.conf
 
 %changelog
+* Wed Oct 21 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.0.16-1
+- Request VRR for the internal display through original KWin's Always policy.
+- Preserve local configuration and separate the policy from physical VRR acceptance.
+
+* Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.0.15-1
+- Supply original KWin defaults using a generic brightness curve and preserve local configuration.
+
+* Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.0.14-1
+- Adopt the project semantic version without enabling additional services.
+
+* Mon Oct 19 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.1.0-14
+- Read bounded sysfs GPU counters without treating PAGE_SIZE as payload length.
+- Cover real sysfs reads and remove a mismatched plugin metadata identifier.
+
 * Mon Oct 19 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.1.0-13
 - Add a native read-only Adreno SystemStats extension and monitor page.
 - Keep original KDE applications and use the kernel's cumulative engine counter.

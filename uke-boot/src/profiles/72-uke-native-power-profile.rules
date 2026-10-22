@@ -1,0 +1,3 @@
+# Native provider readiness activates the handoff without a startup delay.
+ACTION=="add|bind|change", SUBSYSTEM=="platform", KERNEL=="uke-platform-profile", DRIVER=="uke-platform-profile", TAG+="systemd", ENV{SYSTEMD_READY}="0"
+ACTION=="add|bind|change", SUBSYSTEM=="platform", KERNEL=="uke-platform-profile", DRIVER=="uke-platform-profile", ATTR{[module/uke_platform_profile]version}=="1", ATTR{[module/uke_platform_profile]parameters/probe_status}=="1", ENV{SYSTEMD_READY}="1", ENV{SYSTEMD_WANTS}+="uke-native-power-profile-ready.service"

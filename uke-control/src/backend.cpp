@@ -3,6 +3,7 @@
 #include "rpm-api.hpp"
 #include "charge-client.hpp"
 #include "usb-request.hpp"
+#include "wake.hpp"
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -20,9 +21,11 @@
 #include <ctime>
 #include <fcntl.h>
 #include <linux/magic.h>
+#include <linux/f2fs.h>
 #include <poll.h>
 #include <selinux/selinux.h>
 #include <sys/file.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/statvfs.h>
@@ -44,6 +47,7 @@ static void charge_helper() {
 }
 Result charge_control_query(const std::string& operation) {charge_helper();return charge::control_query(operation);}
 Result charge_enable_preconfigured_cap() {charge_helper();return charge::enable_preconfigured_cap();}
+Result charge_enable_moisture() {charge_helper();return charge::enable_moisture();}
 Result charge_apply_preconfigured_cap() {charge_helper();return charge::apply_preconfigured_cap();}
 static void directory(const fs::path& path) {
     fs::create_directories(path);
@@ -107,6 +111,63 @@ static uint64_t decimal(const std::string& value) {
     uint64_t n{};auto p=std::from_chars(value.data(),value.data()+value.size(),n);
     need(p.ec==std::errc{}&&p.ptr==value.data()+value.size(),"Expected an unsigned integer");return n;
 }
+std::string wake_status() { return wake::snapshot(); }
+static void wake_write(const wake::Source& source, bool enabled) {
+    need(!source.path.empty(), "Wake control unavailable: " + source.name + ": " + source.reason);
+    Fd fd{open(source.path.c_str(), O_WRONLY|O_CLOEXEC|O_NOFOLLOW)};
+    struct statfs type{};
+    need(fd.n >= 0 && !fstatfs(fd.n, &type) && type.f_type == SYSFS_MAGIC, "Wake permission is not a sysfs attribute");
+    write_all(fd.n, enabled ? "enabled\n" : "disabled\n");
+    need(read(source.path.string(), 32) == (enabled ? "enabled\n" : "disabled\n"), "Wake permission readback differs");
+}
+void wake_set(const std::string& name, bool enabled) {
+    root(); need(wake::applicable(), "Wake policy requires exact Uke / SM7675 identity"); Lock lock;
+    auto sources = wake::sources();
+    auto selected = std::find_if(sources.begin(), sources.end(), [&](const auto& s) { return s.name == name; });
+    need(selected != sources.end(), "Unknown wake source");
+    const bool previous = selected->enabled;
+    selected->enabled = enabled;
+    need(wake::recovery_key(sources), "At least one recovery key must remain enabled");
+    try {
+        wake_write(*selected, enabled);
+        atomic_file(state/("wake-"+name), enabled ? "enabled\n" : "disabled\n");
+    } catch (...) {
+        if (!selected->path.empty()) try { wake_write(*selected, previous); } catch (...) {
+            throw std::runtime_error("Wake update and rollback failed; inspect wake status before suspending");
+        }
+        throw;
+    }
+}
+void wake_apply() {
+    root(); need(wake::applicable(), "Wake policy requires exact Uke / SM7675 identity"); Lock lock;
+    const auto previous = wake::sources();
+    auto requested = previous;
+    for (auto& source : requested) {
+        const auto path = state/("wake-"+source.name);
+        if (fs::exists(path)) {
+            const auto value = read(path.string(), 32);
+            need(value == "enabled\n" || value == "disabled\n", "Invalid saved wake permission");
+            need(!source.path.empty(), "Saved wake source is no longer available: " + source.name);
+            source.enabled = value == "enabled\n";
+        } else if (source.name == "bluetooth-uart") {
+            // shortcut: keep unqualified UART wake off until accessory wake and RTC trials qualify it.
+            source.enabled = false;
+        }
+    }
+    need(wake::recovery_key(requested), "Saved policy disables every recovery key");
+    try {
+        // Enable recovery paths before disabling any existing permission.
+        for (bool enabled : {true, false}) for (size_t i = 0; i < requested.size(); ++i)
+            if (!requested[i].path.empty() && requested[i].enabled != previous[i].enabled && requested[i].enabled == enabled)
+                wake_write(requested[i], enabled);
+    } catch (...) {
+        bool restored = true;
+        for (bool enabled : {true, false}) for (const auto& source : previous)
+            if (!source.path.empty() && source.enabled == enabled) try { wake_write(source, enabled); } catch (...) { restored = false; }
+        need(restored, "Wake policy and rollback failed; inspect wake status before suspending");
+        throw;
+    }
+}
 uint64_t swap_mib(const std::string& policy,uint64_t memory) {
     uint64_t size=policy=="half"?memory/(2*MiB):policy=="full"?memory/MiB:decimal(policy);
     need(size>=64&&size<=65536,"Swap size must be 64..65536 MiB");return size;
@@ -165,6 +226,16 @@ static bool own_file(const std::string& path) {
 static void trusted_swap(const std::string& path,uint64_t size) {
     struct stat st{};need(lstat(path.c_str(),&st)==0&&S_ISREG(st.st_mode)&&st.st_uid==0&&st.st_nlink==1&&!(st.st_mode&0077)&&uint64_t(st.st_size)==size,"Untrusted or incorrectly sized managed swap file");
 }
+static void allocate_swap(int fd,uint64_t size,bool f2fs) {
+    if(f2fs) {
+        uint32_t pin=1;
+        need(ioctl(fd,F2FS_IOC_SET_PIN_FILE,&pin)>=0,"Cannot pin the new F2FS swap file");
+        need(fallocate(fd,0,0,static_cast<off_t>(size))==0,"Cannot preallocate the pinned F2FS swap file");
+    }
+    std::array<char,1024*1024> zeros{};uint64_t left=size;
+    while(left){size_t amount=std::min<uint64_t>(left,zeros.size());ssize_t n=write(fd,zeros.data(),amount);if(n<0&&errno==EINTR)continue;need(n>0,"Swap allocation failed");left-=uint64_t(n);}
+    need(fsync(fd)==0,"Swap allocation sync failed");
+}
 static void apply_locked(const std::string& selected) {
     board();
     const auto before=active();std::string target=partition();
@@ -172,7 +243,7 @@ static void apply_locked(const std::string& selected) {
     if(target.empty()) {
         directory(swaps);target=(swaps/("swap-"+std::to_string(size/MiB))).string();
         if(!fs::exists(target)) {
-            struct statfs filesystem{};need(statfs(swaps.c_str(),&filesystem)==0&&(filesystem.f_type==EXT4_SUPER_MAGIC||filesystem.f_type==XFS_SUPER_MAGIC),"Automatic swap-file creation currently supports ext4 and XFS only");
+            struct statfs filesystem{};need(statfs(swaps.c_str(),&filesystem)==0&&(filesystem.f_type==EXT4_SUPER_MAGIC||filesystem.f_type==XFS_SUPER_MAGIC||filesystem.f_type==F2FS_SUPER_MAGIC),"Automatic swap-file creation supports ext4, XFS and F2FS only");
             struct statvfs space{};need(statvfs(swaps.c_str(),&space)==0,"Cannot measure free storage");
             const uint64_t free=uint64_t(space.f_bavail)*space.f_frsize;
             need(free>size+std::max<uint64_t>(2*GiB,uint64_t(space.f_blocks)*space.f_frsize/10),"Insufficient free storage after reserve; existing swap remains active");
@@ -180,9 +251,7 @@ static void apply_locked(const std::string& selected) {
             Fd fd{open(temporary.c_str(),O_CREAT|O_EXCL|O_WRONLY|O_CLOEXEC|O_NOFOLLOW,0600)};
             need(fd.n>=0,"Interrupted allocation exists; inspect and remove only its inactive .allocating file");
             try {
-                std::array<char,1024*1024> zeros{};uint64_t left=size;
-                while(left){size_t amount=std::min<uint64_t>(left,zeros.size());ssize_t n=write(fd.n,zeros.data(),amount);if(n<0&&errno==EINTR)continue;need(n>0,"Swap allocation failed");left-=uint64_t(n);}
-                need(fsync(fd.n)==0,"Swap allocation sync failed");
+                allocate_swap(fd.n,size,filesystem.f_type==F2FS_SUPER_MAGIC);
                 checked({"/usr/bin/mkswap","--quiet",temporary});
                 if(is_selinux_enabled()>0)need(fsetfilecon(fd.n,"system_u:object_r:swapfile_t:s0")==0,"Cannot label swap file for SELinux");
                 need(rename(temporary.c_str(),target.c_str())==0,"Cannot commit allocated swap");
@@ -265,7 +334,7 @@ Result cdc_set(bool enabled) {
 }
 std::string status() {
     std::string selected=geteuid()==0?policy():"root-private (sudo to inspect)";
-    return "uke-control 0.1.0\nswap_policy="+selected+"\n"+read("/proc/swaps")+charge_status()+usb_status();
+    return "uke-control 1.2.0\nswap_policy="+selected+"\n"+read("/proc/swaps")+charge_status()+usb_status();
 }
 void boot() {
     root();board();(void)inventory(true);swap_apply();
@@ -282,20 +351,61 @@ std::string report() {
       {"journal-kde",{"/usr/bin/journalctl","-b","_UID=1000","--no-pager","-n","30000"}},
       {"failed-units",{"/usr/bin/systemctl","--failed","--no-pager"}},
       {"services",{"/usr/bin/systemctl","list-units","--all","--no-pager"}},
+      {"processes",{"/usr/bin/ps","-e","-o","pid,ppid,comm,stat,etimes,pcpu,pmem,rss,wchan:32","--sort=-rss"}},
+      {"proportional-memory",{"/usr/bin/ps","-e","-o","pid,ppid,comm,pss,rss,pmem","--sort=-pss"}},
+      {"gpu-time-before",{"/usr/bin/cat","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/gpu_engine_ns","/proc/uptime"}},
+      {"resource-sample",{"/usr/bin/vmstat","-w","1","5"}},
+      {"cpu-sample",{"/usr/bin/mpstat","-P","ALL","1","5"}},
+      {"process-sample",{"/usr/bin/pidstat","-h","-u","-r","-d","-t","-p","ALL","1","5"}},
+      {"gpu-time-after",{"/usr/bin/cat","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/gpu_engine_ns","/proc/uptime"}},
+      {"gpu-frequency",{"/usr/bin/cat","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/cur_freq","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/min_freq","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/max_freq","/sys/class/devfreq/3d00000.qcom,kgsl-3d0/governor"}},
+      {"cpu-frequencies",{"/usr/bin/cat","/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq","/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq","/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq"}},
+      {"cgroup-memory",{"/usr/bin/systemd-cgtop","--batch","--iterations=1","--depth=3","--order=memory"}},
+      {"boot-time",{"/usr/bin/systemd-analyze","time"}},
+      {"boot-critical-chain",{"/usr/bin/systemd-analyze","critical-chain","--no-pager"}},
+      {"boot-history",{"/usr/bin/journalctl","--list-boots","--no-pager"}},
+      {"unit-overrides",{"/usr/bin/systemd-delta","--no-pager"}},
       {"packages",{"/usr/bin/rpm","-qa","--qf","%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n"}},
+      {"battery-snapshot",{"/usr/bin/uke-battery"}},
+      {"desktop-interfaces",{"/usr/bin/uke-control","desktop","status"}},
+      {"battery-control",{"/usr/libexec/uke-charge-control","status"}},
+      {"battery-admission",{"/usr/libexec/uke-charge-control","admission"}},
+      {"battery-protocols",{"/usr/libexec/uke-charge-control","protocols"}},
+      {"battery-protection",{"/usr/libexec/uke-charge-control","protection-status"}},
       {"mounts",{"/usr/bin/findmnt","--json"}},
+      {"fstab-verify",{"/usr/bin/findmnt","--verify","--verbose"}},
       {"display",{"/usr/bin/modetest","-M","msm-kms","-c","-p"}}};
     std::ostringstream receipt;
-    for(const auto& [name,args]:commands){auto result=execute(args,25);atomic_file(path/(name+".log"),result.output);receipt<<name<<" exit="<<result.status<<'\n';}
-    for(const char* file:{"meminfo","swaps","vmstat","interrupts","softirqs","uptime","pressure/cpu","pressure/memory","pressure/io"}) {
+    for(const auto& [name,args]:commands){
+        const auto started=std::chrono::steady_clock::now();auto result=execute(args,25);
+        const auto elapsed=std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count();
+        atomic_file(path/(name+".log"),result.output);receipt<<name<<" exit="<<result.status<<" elapsed_ms="<<elapsed<<'\n';
+    }
+    for(const char* file:{"meminfo","swaps","vmstat","interrupts","softirqs","uptime","loadavg","stat","schedstat","diskstats","buddyinfo","pressure/cpu","pressure/memory","pressure/io"}) {
         std::string name=file;std::replace(name.begin(),name.end(),'/','-');atomic_file(path/("proc-"+name+".log"),read(std::string("/proc/")+file));
     }
-    atomic_file(path/"partitions.json",inventory(false));atomic_file(path/"device-status.log",status());atomic_file(path/"collection.log",receipt.str());
+    for(const char* file:{"enabled","defrag","shmem_enabled"})
+        atomic_file(path/(std::string("thp-")+file+".log"),read(std::string("/sys/kernel/mm/transparent_hugepage/")+file));
+    auto capture=[&](const std::string& name,const auto& collect) {
+        std::string value;
+        try {value=collect();}
+        catch(const std::exception& error) {
+            atomic_file(path/(name+".error"),std::string("Collection unavailable: ")+error.what()+'\n');
+            receipt<<name<<" exit=1\n";return;
+        }
+        atomic_file(path/name,value);receipt<<name<<" exit=0\n";
+    };
+    capture("partitions.json",[]{return inventory(false);});
+    capture("device-status.log",[]{return status();});
+    capture("firmware.json",[]{return firmware_status();});
+    capture("hardware.json",[]{return hardware_status();});
+    capture("wake.json",[]{return wake_status();});
+    atomic_file(path/"collection.log",receipt.str());
     auto kernel=execute({"/usr/bin/uname","-r"},5);
     std::string release=kernel.status==0?kernel.output:"unavailable\n";
     need(release.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-+_\n")==std::string::npos,"Unexpected kernel release; refusing public summary");
     const auto collected=std::time(nullptr);std::tm utc{};need(gmtime_r(&collected,&utc),"UTC clock unavailable");char date[32]{};need(std::strftime(date,sizeof(date),"%Y-%m-%dT%H:%M:%SZ",&utc),"UTC clock formatting failed");
-    atomic_file(path/"github-summary.md",std::string("Date: ")+date+"\nDevice family: Uke / SM7675\nApplication: uke-control 0.1.0\nKernel: "+release+"\nA private local diagnostic bundle was collected. Raw logs, addresses, identifiers and partition inventories are not attached.\n\nObserved problem and reproduction steps: to be supplied by the reporter.\nHardware acceptance is not inferred from collection success.\n");
+    atomic_file(path/"github-summary.md",std::string("Date: ")+date+"\nDevice family: Uke / SM7675\nApplication: uke-control 1.2.0\nKernel: "+release+"\nA private local diagnostic bundle was collected. Raw logs, addresses, identifiers and partition inventories are not attached.\n\nObserved problem and reproduction steps: to be supplied by the reporter.\nHardware acceptance is not inferred from collection success.\n");
     return path.string();
 }
 void report_github(const std::string& dir,const std::string& repository) {

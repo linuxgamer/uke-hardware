@@ -17,6 +17,8 @@ TimeoutStopSec=5
 NoNewPrivileges=yes
 ProtectHome=yes
 PrivateTmp=yes
+MemoryMax=128M
+MemorySwapMax=0
 
 [Install]
 WantedBy=multi-user.target

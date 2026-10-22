@@ -1,9 +1,8 @@
 {
     "KPlugin": {
-        "Id": "uke_adreno",
         "Name": "Adreno GPU sensors",
         "Description": "Read-only native GPU execution accounting for the original KDE system monitor",
-        "Version": "0.1.0",
+        "Version": "1.0.15",
         "License": "MIT"
     }
 }

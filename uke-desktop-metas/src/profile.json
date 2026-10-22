@@ -3,7 +3,7 @@
   "device": "uke",
   "soc": "SM7675",
   "profile": "upstream-desktop-policy-metadata",
-  "desktop_package": "kde-plasma-uke-meta",
+  "desktop_package": "uke-kde-plasma-meta",
   "default_desktop": "console-first",
   "boot_tested": false,
   "hardware_tested": false,

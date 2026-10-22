@@ -15,9 +15,10 @@ void ModelSession::flush() {
 }
 ModelResult ModelSession::observe(const Observation &s, const Qualification &q) {
     ModelResult result;
-    const std::string key = q.profile + ":" + std::to_string(q.current) + std::to_string(q.energy) +
-        std::to_string(q.learned_capacity) + std::to_string(q.capacity_basis) + std::to_string(q.target_effective);
-    if (key != profile_) { forecast_.reset(); efc_.break_continuity(); profile_ = key; }
+    if (!qualification_ || !same_qualification(q, *qualification_)) {
+        forecast_.reset(); efc_.break_continuity(); qualification_ = q;
+    }
+    result.electrical = engineering(s, q);
     forecast_.observe(s, q);
     result.capacity_retention_percent = retention(s, q);
     result.to_empty = forecast_.empty(s, q);

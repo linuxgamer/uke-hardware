@@ -8,7 +8,7 @@ This repository owns decoration, theme and native runtime sources for Fedora Raw
   before SRPM generation and during RPM preparation. Its GPL/LGPL source license
   is retained. The small KPlugin metadata correction is attributed to the Nabu
   reference specification at `152980fa9a4fd2d71a2825efe10411c5a8a74da7`.
-- `plymouth-uke`: an original MIT-licensed optional text theme using the current
+- `uke-plymonth`: an original MIT-licensed optional text theme using the current
   renderer dimensions. It does not assume a Uke panel DPI, enable itself,
   regenerate an initramfs, select a boot entry or copy Nabu geometry/artwork.
 

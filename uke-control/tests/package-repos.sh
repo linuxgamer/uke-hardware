@@ -6,7 +6,7 @@ test "$(id -u)" = 0
 for cmd in rpmbuild rpmsign rpmkeys createrepo_c gpg; do command -v "$cmd" >/dev/null; done
 fixture=$(mktemp -d /tmp/uke-channel-repos.XXXXXX)
 trap 'rm -rf -- "$fixture"' EXIT
-mkdir -p "$fixture"/{stable,test,unsigned,shared,legacy,home,top/{SOURCES,SPECS,BUILD,RPMS,SRPMS}}
+mkdir -p "$fixture"/{stable,test,unsigned,shared,legacy,private,home,top/{SOURCES,SPECS,BUILD,RPMS,SRPMS}}
 chmod 700 "$fixture/home"
 export GNUPGHOME="$fixture/home"
 gpg --batch --passphrase '' --quick-generate-key 'Uke fixture <fixture@example.invalid>' rsa2048 sign 1d >/dev/null 2>&1
@@ -56,6 +56,8 @@ build uke-missing 1 test
 build uke-control 1 stable 'Provides: uke-control(channel-api) = 1'
 build uke-control 2 test 'Provides: uke-control(channel-api) = 1'
 build uke-control 0 legacy
+build uke-local-touch-data 1 private
+build uke-local-touch-data 2 stable
 build uke-fixture 3 unsigned
 kernel 7.2.10 stable 7.2.10-fixture
 kernel 7.2.11 test 7.2.11-fixture
@@ -71,6 +73,7 @@ root() {
     rpm --root "$target" --initdb
     rpmkeys --root "$target" --import "$fixture/key.asc"
     rpm --root "$target" -i "$fixture/test/uke-fixture-2-1.noarch.rpm" "$fixture/test/uke-same-1-1.noarch.rpm" "$fixture/test/uke-control-2-1.noarch.rpm" "$fixture/test/senemos-uke-linux-kernel-"*.rpm
+    rpm --root "$target" -i "$fixture/private/uke-local-touch-data-1-1.noarch.rpm"
 }
 root normal
 build/test-package-repos "$fixture/normal" "$fixture/stable" "$fixture/test" downgrade
@@ -81,6 +84,8 @@ build/test-package-repos "$fixture/normal" "$fixture/stable" "$fixture/test" fal
 build/test-package-repos "$fixture/normal" "$fixture/stable" "$fixture/test" upgrade
 root updatecase
 build/test-package-repos "$fixture/updatecase" "$fixture/stable" "$fixture/test" downgrade-update
+rpm --root "$fixture/updatecase" -q uke-local-touch-data | grep -Fx uke-local-touch-data-1-1.noarch
+test "$(cat "$fixture/updatecase/usr/share/uke-channel-fixtures/uke-local-touch-data/1/value")" = fixture
 root absent
 rpm --root "$fixture/absent" -i "$fixture/test/uke-missing-1-1.noarch.rpm"
 build/test-package-repos "$fixture/absent" "$fixture/stable" "$fixture/test" missing
@@ -102,4 +107,64 @@ build/test-package-repos "$fixture/normal" "$fixture/stable" "$fixture/test" tes
 kernel 7.4 test 7.4-fixture
 createrepo_c --quiet --update "$fixture/test"
 build/test-package-repos "$fixture/normal" "$fixture/stable" "$fixture/test" fallback
-printf '%s\n' 'PASS: signed downgrade, same-NEVRA replacement, RC fallback/selection, update, missing-package refusal, shared-module refusal and unsigned rejection'
+build uke-old 1 test
+build uke-old 3 test
+build uke-renamed 2 stable $'Provides: uke-old = 2-1\nObsoletes: uke-old < 2-1\nConflicts: uke-old'
+createrepo_c --quiet --update "$fixture/stable"
+root renamecase
+rpm --root "$fixture/renamecase" -i "$fixture/test/uke-old-1-1.noarch.rpm"
+build/test-package-repos "$fixture/renamecase" "$fixture/stable" "$fixture/test" rename
+rpm --root "$fixture/renamecase" -q uke-renamed
+! rpm --root "$fixture/renamecase" -q uke-old
+root newerold
+rpm --root "$fixture/newerold" -i "$fixture/test/uke-old-3-1.noarch.rpm"
+build/test-package-repos "$fixture/newerold" "$fixture/stable" "$fixture/test" rename-upper-bound
+mkdir "$fixture/ambiguous" "$fixture/provides-only"
+cp "$fixture/stable/"*.rpm "$fixture/ambiguous/"
+cp "$fixture/stable/"*.rpm "$fixture/provides-only/"
+rm "$fixture/provides-only/uke-renamed-2-1.noarch.rpm"
+build uke-second 2 ambiguous $'Provides: uke-old = 2-1\nObsoletes: uke-old < 2-1'
+build uke-only-provides 2 provides-only 'Provides: uke-old = 2-1'
+for repo in ambiguous provides-only; do createrepo_c --quiet "$fixture/$repo"; done
+root ambiguouscase
+rpm --root "$fixture/ambiguouscase" -i "$fixture/test/uke-old-1-1.noarch.rpm"
+build/test-package-repos "$fixture/ambiguouscase" "$fixture/ambiguous" "$fixture/test" ambiguous-rename
+root providescase
+rpm --root "$fixture/providescase" -i "$fixture/test/uke-old-1-1.noarch.rpm"
+build/test-package-repos "$fixture/providescase" "$fixture/provides-only" "$fixture/test" provides-only
+mkdir "$fixture/fedora"
+mkdir "$fixture/vendorforeign"
+build outside-vendor 1 fedora
+build outside-vendor 2 vendorforeign
+mv "$fixture/vendorforeign/"*.rpm "$fixture/fedora/"
+build fastfetch 1 fedora
+build fastfetch 2 test
+createrepo_c --quiet "$fixture/fedora"
+root vendorguard
+rpm --root "$fixture/vendorguard" -i "$fixture/test/uke-old-1-1.noarch.rpm" "$fixture/fedora/outside-vendor-1-1.noarch.rpm"
+build/test-package-repos "$fixture/vendorguard" "$fixture/stable" "$fixture/test" rename-update-vendor
+rpm --root "$fixture/vendorguard" -q uke-renamed | grep -Fx uke-renamed-2-1.noarch
+rpm --root "$fixture/vendorguard" -q outside-vendor | grep -Fx outside-vendor-1-1.noarch
+! rpm --root "$fixture/vendorguard" -q uke-old
+root originalfastfetch
+rpm --root "$fixture/originalfastfetch" -i "$fixture/test/fastfetch-2-1.noarch.rpm"
+build/test-package-repos "$fixture/originalfastfetch" "$fixture/stable" "$fixture/test" missing-fedora-fastfetch
+build/test-package-repos "$fixture/originalfastfetch" "$fixture/stable" "$fixture/test" fedora-fastfetch
+rpm --root "$fixture/originalfastfetch" -q fastfetch | grep -Fx fastfetch-1-1.noarch
+build uke-senemos-kernel-mainline-kvm 7.2.9 test
+build senemos-uke-linux-kernel-mainline-kvm-core 7.2.11 test $'Provides: installonlypkg(kernel)\nProvides: kernel-uname-r(7.2.11-kvm-fixture)'
+mkdir "$fixture/kvmonly"
+rpm --root "$fixture/kvmonly" --initdb
+rpmkeys --root "$fixture/kvmonly" --import "$fixture/key.asc"
+rpm --root "$fixture/kvmonly" -i "$fixture/test/uke-senemos-kernel-mainline-kvm-7.2.9-1.noarch.rpm" "$fixture/test/senemos-uke-linux-kernel-mainline-kvm-core-7.2.11-1.noarch.rpm"
+build/test-package-repos "$fixture/kvmonly" "$fixture/stable" "$fixture/test" isolated-kvm
+mkdir "$fixture/private-replacement"
+cp "$fixture/stable/"*.rpm "$fixture/private-replacement/"
+build uke-private-replacer 1 test
+build uke-private-replacer 2 private-replacement $'Provides: uke-local-touch-data = 2-1\nObsoletes: uke-local-touch-data < 2-1'
+createrepo_c --quiet "$fixture/private-replacement"
+root privateerasure
+rpm --root "$fixture/privateerasure" -i "$fixture/test/uke-private-replacer-1-1.noarch.rpm"
+build/test-package-repos "$fixture/privateerasure" "$fixture/private-replacement" "$fixture/test" private-obsolete
+rpm --root "$fixture/privateerasure" -q uke-local-touch-data | grep -Fx uke-local-touch-data-1-1.noarch
+printf '%s\n' 'PASS: signed downgrade, same-NEVRA replacement, bounded vendor transitions, RC fallback/selection, update, missing-package refusal, shared-module refusal and unsigned rejection'

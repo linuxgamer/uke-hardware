@@ -1,0 +1,50 @@
+--- a/nvt_touch_core.hpp
++++ b/nvt_touch_core.hpp
+@@ -138,7 +138,7 @@
+     std::vector<NodeSet> previous_domain_peak_sets_;
+     std::vector<MergeHistory> previous_histories_;
+     std::array<TrackerSlot, kFingerSlots> tracker_{};
+-    int next_tracking_id_ = 0;
++    uint16_t next_tracking_id_ = 0;
+     int palm_retain_count_ = 0;
+     bool palm_latched_ = false;
+     std::vector<PalmDomain> previous_palm_domains_;
+--- a/nvt_touch_core.cpp
++++ b/nvt_touch_core.cpp
+@@ -1376,6 +1376,18 @@
+     return active;
+ }
+ 
++static int takeTrackingId(uint16_t &cursor,
++        const std::array<TouchCore::TrackerSlot,kFingerSlots> &previous,
++        const std::array<TouchCore::TrackerSlot,kFingerSlots> &next) {
++    for(unsigned attempt=0;attempt<=2*kFingerSlots;attempt++) {
++        const int id=cursor++;
++        const auto occupied=[&](const auto &slot){return slot.active && slot.tracking_id==id;};
++        if(!std::any_of(previous.begin(),previous.end(),occupied) &&
++           !std::any_of(next.begin(),next.end(),occupied))return id;
++    }
++    throw std::logic_error("No free touch tracking ID");
++}
++
+ std::vector<Slot> TouchCore::updateTracker(
+     const std::vector<Contact> &contacts,
+     std::vector<TrackedSlot> *tracked_slots) {
+@@ -1431,7 +1443,7 @@
+         const TrackerSlot &previous = tracker_[number];
+         next[number] = TrackerSlot{true, previous.tracking_id, contact,
+                                    previous.contact.x, previous.contact.y,
+-                                   previous.age + 1};
++                                   previous.age < std::numeric_limits<int>::max() ? previous.age + 1 : previous.age};
+     }
+     std::vector<int> free_numbers;
+     free_numbers.reserve(kFingerSlots);
+@@ -1446,7 +1458,7 @@
+         if (free_index >= free_numbers.size())
+             break;
+         const int number = free_numbers[free_index++];
+-        next[number] = TrackerSlot{true, next_tracking_id_++, contact,
++        next[number] = TrackerSlot{true, takeTrackingId(next_tracking_id_,tracker_,next), contact,
+                                    contact.x, contact.y, 1};
+     }
+     tracker_ = next;

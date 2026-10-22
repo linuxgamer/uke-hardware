@@ -3,63 +3,127 @@
   "target": "fedora-rawhide-aarch64",
   "policy": "Preserve native runtime APIs; exclude optional Python bindings and host-only utilities",
   "source_kind": "official-Fedora-Koji-source-RPM",
-  "source_signature": "Koji source builds are not asserted to carry a release signature; exact HTTPS source and SHA-256 are pinned",
+  "source_signature": "The watcher verifies a signed Fedora source RPM in an isolated pinned-key database and matches its decompressed payload to the immutable Koji source RPM",
   "hardware_tested": false,
   "packages": [
     {
       "name": "mesa",
-      "version": "26.2.4",
+      "version": "26.2.5",
       "release": "1.fc46",
-      "native_release": "2",
-      "sha256": "fef94c6e88df2b9b1495b71d421a0dd021cf4de8337263350d559b7a33ce9451",
-      "delta": "Preserve AArch64 JIT feature detection; name exact Adreno 732 chips and accept their fuse-ID wildcard without changing GPU properties"
+      "native_release": "5",
+      "sha256": "38209e85ce96607b65b0b60109b4e3b6959c75ad1e04e5ebfcd422ab3755c7e5",
+      "delta": "Preserve AArch64 JIT feature detection; name exact Adreno 732 chips and accept their fuse-ID wildcard without changing GPU properties",
+      "family": "uke-additional",
+      "binary_name": "mesa-dri-drivers",
+      "signed_mirror_sha256": "a337c54f26623731292dd21049c719213a53ba8f31d81b6234e57e1de5b1241c",
+      "source_payload_sha256": "067b1a7399075f9fe3c6c9b7ec1888909aa35acfc831a83109e21e5107e47a82"
     },
     {
       "name": "at-spi2-core",
-      "version": "2.62.0.1",
+      "version": "2.62.1",
       "release": "1.fc46",
-      "native_release": "2",
-      "sha256": "4e755fccee238ad95b8daa2d592e9697a96eeb9beb222eb82bd5c4a113d004b9",
-      "delta": "Exclude the optional Python GI override; retain native accessibility libraries and service"
+      "native_release": "3",
+      "sha256": "00ddc6c26c5e30e22f47c3e022ef22582455afcbb69ecb16a972512483c9548b",
+      "delta": "Exclude the optional Python GI override; retain native accessibility libraries and service",
+      "family": "uke-additional",
+      "binary_name": "at-spi2-core",
+      "signed_mirror_sha256": "4949a0ecf2e79348f973d9a8f8d5768185b426640e9b2956b2c83ba72196b3bf",
+      "source_payload_sha256": "421871de01ef5a443c9cfb48606920119145d7a68191b5cba030a5329182d10f"
     },
     {
       "name": "gstreamer1",
-      "version": "1.28.7",
+      "version": "1.28.8",
       "release": "1.fc46",
-      "native_release": "2",
-      "sha256": "4a185341084890377e537eea0569a715f19c620e5e4c007ebe05c44252f2708f",
-      "delta": "Exclude installed host documentation scanners; retain media libraries, native CLI and plugin scanner"
+      "native_release": "3",
+      "sha256": "70d73cdd13f9a1789cae26a24f873c806d59f31fb0687a79f2a57f9ffd624b83",
+      "delta": "Exclude installed host documentation scanners; retain media libraries, native CLI and plugin scanner",
+      "family": "uke-additional",
+      "binary_name": "gstreamer1",
+      "signed_mirror_sha256": "138bb6e5a3298f8a1c969b3b2ab8b158f5f873981e9c33d191a3b7c9a623fbe2",
+      "source_payload_sha256": "a6ba2417a7bf7110dacfafedaf5781db8a17f48d1b707d01e9356db8f0bb33a1"
     },
     {
       "name": "libaccounts-glib",
       "version": "1.25",
       "release": "28.fc46",
-      "native_release": "29",
+      "native_release": "31",
       "sha256": "d9895473a2e6fe342f8a3975148166aa3bbf74580dee7da4bf57300664efdbcb",
-      "delta": "Exclude optional Python GI override and its matching explicit dependency; retain native account API"
+      "delta": "Exclude optional Python GI override and its matching explicit dependency; retain native account API",
+      "family": "uke-additional",
+      "binary_name": "libaccounts-glib",
+      "signed_mirror_sha256": "1bd0ec5118012f8adc415bb544e18145dc4738526e465efa38f3800bbc013177",
+      "source_payload_sha256": "a3b92ab89d7ebdefe8fc841ab9370d8c463318c37a6dc3e8f5aee719496ed4e1"
     },
     {
       "name": "libwacom",
       "version": "2.20.0",
       "release": "1.fc46",
-      "native_release": "2",
+      "native_release": "4",
       "sha256": "1578133a5ae62096e74c53540aea79b38f537f8e65ff59ecc373c61fd964ae89",
-      "delta": "Exclude Python DB updater and Python stylus viewer; retain native library, device listings and upstream data"
+      "delta": "Exclude Python DB updater and Python stylus viewer; retain native library, device listings and upstream data",
+      "family": "uke-additional",
+      "binary_name": "libwacom",
+      "signed_mirror_sha256": "1463346554806de0929722a32b283497d66a23b191d65cf99546eb4b2379a4f0",
+      "source_payload_sha256": "83d524d267d9a2f993151193ceb11dc5fad0b0336c3e5a1f62f7818bddf7dd36"
     },
     {
       "name": "libstdcxx-uke-runtime",
       "source_name": "gcc",
       "version": "16.2.1",
       "release": "2.fc46.1",
-      "native_release": "3",
+      "native_release": "5",
       "sha256": "b8f6cc1f055a057233a3b807bf5e9cc2a43836c025ba664b1231c79d86271175",
-      "delta": "Compile the native GNU C++ runtime without optional GDB Python helpers; verify the original versioned symbol set and run a native smoke fixture"
+      "delta": "Compile the native GNU C++ runtime without optional GDB Python helpers; verify the original versioned symbol set and run a native smoke fixture",
+      "family": "uke-additional",
+      "binary_name": "libstdc++",
+      "signed_mirror_sha256": "7de21e95d3a0d126aeb16b238e39af9bfb97d21eebb7a03797b30a89ac57a2e2",
+      "source_payload_sha256": "1a07f0f3aa43b26865ad5511205f738eb8a94708ab3ef04d5a4d5e66aff03729"
+    },
+    {
+      "name": "upower",
+      "family": "uke-power",
+      "binary_name": "upower",
+      "version": "1.91.5",
+      "release": "1.fc46",
+      "native_release": "5",
+      "sha256": "130bb7f071104e10ea4960c5c4b4bb3fdd3f9d582d16488102fbb7cb4eebc5de",
+      "delta": "Propagate required threshold errors; preserve reported learned capacity; retain AC-online/net-discharge host fixture; no charger controls enabled",
+      "signed_mirror_sha256": "ae102a4e75d4f1a214e28713ff6ea4ca0d8e1395b0b87e8e8a621c698e36a4ee",
+      "source_payload_sha256": "4accbe303d13122222490032e4627ea199fed204daf51233dc58c545875fb858"
+    },
+    {
+      "name": "iio-sensor-proxy",
+      "family": "uke-sensors",
+      "binary_name": "iio-sensor-proxy",
+      "version": "3.9",
+      "release": "3.fc45",
+      "native_release": "12",
+      "sha256": "c7ab6668bc6946593b5ef63d509f3393c48b338c78691530bc7adc4dfcc26a36",
+      "delta": "Retain SSC support, initialized D-Bus acquisition, dual-light lifecycle, SELinux confinement and native fixture",
+      "signed_mirror_sha256": "a2b0ef06afed329bd029addcee6967dd06b27ffa3b4d7536b13a9982b85137a0",
+      "source_payload_sha256": "2141860ad82a0d38fceab8d6621821ee549bae55db5848950c024181539ef47c"
+    },
+    {
+      "name": "accountsservice",
+      "binary_name": "accountsservice",
+      "family": "uke-additional",
+      "version": "26.27.3",
+      "release": "2.fc45",
+      "native_release": "3",
+      "sha256": "394b5016ef1a895b2c8ecf348be692830b483fe6f4612a771c0d6b764f2171e6",
+      "delta": "Ignore only ENOENT for the optional TCB directory; preserve normal shadow accounts and permission/I/O diagnostics; original Fedora daemon and native libraries",
+      "signed_mirror_sha256": "eb2c9144d0df68228840f0fcc8a7f4085f2f98fecc0dabd8a6200f026448682e",
+      "source_payload_sha256": "ca7e2e1c3d36e2a182c1553a27315b37a0e3a92958cb3afd6f5fef0c145d841d",
+      "host_tools": {
+        "python3-dbusmock": "0.38.0-3.fc45"
+      }
     }
   ],
   "baseline": {
     "package": "libstdc++-16.2.1-2.fc46.1.aarch64",
     "symbol_count": 6100,
-    "symbol_sha256": "db74b5e1acc6e2a6ce6182c63d57ad61cc79278daa811c0fde65bd0a411ec1fd"
+    "symbol_sha256": "db74b5e1acc6e2a6ce6182c63d57ad61cc79278daa811c0fde65bd0a411ec1fd",
+    "soname_file": "libstdc++.so.6.0.36"
   },
   "withdrawn_packages": [
     {
@@ -83,6 +147,44 @@
       "reason": "Owner forbids cloning or producing KDE desktop application variants; use original distribution applications",
       "automatic_build": false,
       "target_admitted": false
+    },
+    {
+      "name": "uke-power-profile-backend",
+      "source_name": "power-profiles-daemon",
+      "binary_name": "power-profiles-daemon",
+      "family": "uke-power",
+      "version": "0.30",
+      "release": "4.fc45",
+      "native_release": "6",
+      "sha256": "f1058d02c2472a9153c98962d96e8d186ccde71ac95c940925b8dc5e45e152c2",
+      "delta": "Native Uke backend built from current Fedora PPD source; retain governors, thermal limits, readback/rollback and native driver tests; no Python CLI overlay",
+      "signed_mirror_sha256": "8bcf753cd8f64900883d2552b24850f94728c1221be47ca7110fcbdac8f72abc",
+      "source_payload_sha256": "d0d1c2d8481a9f46532ec84a7edba951d3859100a3753afa8436b66e949ea240",
+      "reason": "Native kernel profiles replace this overlay; use the original distribution daemon. Retained signed archives cover explicit older-kernel rollback.",
+      "automatic_build": false,
+      "target_admitted": false
     }
-  ]
+  ],
+  "tracking": {
+    "repository": "Fedora Rawhide",
+    "architecture": "aarch64",
+    "schedule_utc": "every six hours",
+    "destination": "uke-linux-test",
+    "key_fingerprints": [
+      "D924B10D3E810DABDD8B56B596E7E91491211FCE",
+      "4F50A6114CD5C6976A7F1179655A4B02F577861E"
+    ],
+    "policy": "Track published signed Rawhide sources; retain overlays, exact source hashes, native tests and one-build admission; fail on incompatible ports"
+  },
+  "build_tools": {
+    "python3": "3.15.0-1.fc46",
+    "python3-devel": "3.15.0-1.fc46",
+    "meson": "1.12.1-2.fc46",
+    "gobject-introspection-devel": "1.86.0-12.fc46",
+    "python3-mako": "1.4.1-2.fc46",
+    "python3-pycparser": "3.00-4.fc45",
+    "python3-pyyaml": "6.0.3-6.fc45",
+    "llvm-devel": "23.1.3-1.fc46",
+    "gcc-c++": "16.2.1-2.fc46.1"
+  }
 }

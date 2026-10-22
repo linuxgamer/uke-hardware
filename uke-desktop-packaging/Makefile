@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -Eeuo pipefail -c
 .ONESHELL:
-.PHONY: validate srpm track-stable
+.PHONY: validate srpm track-stable track-rawhide
 PACKAGE ?= plymouth-uke
 outdir ?= $(CURDIR)/build/srpm/$(PACKAGE)
 validate:
@@ -9,13 +9,12 @@ validate:
 	jq -e '(.commit|test("^[a-f0-9]{40}$$")) and (.sha256|test("^[a-f0-9]{64}$$")) and (.version|test("^[0-9]+[.][0-9]+$$")) and .hardware_specific==false and .hardware_tested==false' manifests/material-decoration.json >/dev/null
 	test "$$(sed -n 's/^%global upstream_commit //p' packaging/material-decoration/material-decoration.spec)" = "$$(jq -r .commit manifests/material-decoration.json)"
 	! grep -Eq '^(Requires|Recommends):.*(python|pypy|libpython|nabu)' packaging/*/*.spec
-	jq -e '.hardware_tested==false and (.packages|length==6) and all(.packages[]; (.sha256|test("^[a-f0-9]{64}$$")) and (.native_release|test("^[0-9]+([.][0-9]+)*$$")) and (.version|test("uke";"i")|not) and .name!="plasma-workspace" and .name!="dolphin")' manifests/native-runtime.json >/dev/null
-	test "$$(awk '/^Release:/ {print $$2}' packaging/libstdcxx-uke-runtime/libstdcxx-uke-runtime.spec)" = "$$(jq -r '.packages[]|select(.name=="libstdcxx-uke-runtime")|.native_release' manifests/native-runtime.json)%{?dist}"
+	jq -e '.hardware_tested==false and (.packages|length==9) and all(.packages[]; (.sha256|test("^[a-f0-9]{64}$$")) and (.native_release|test("^[0-9]+([.][0-9]+)*$$")) and (.version|test("uke";"i")|not) and .name!="plasma-workspace" and .name!="dolphin" and .name!="uke-power-profile-backend")' manifests/native-runtime.json >/dev/null
 	test "$$(sha256sum src/native-runtime/fedora-exported-symbols.txt | cut -d ' ' -f1)" = "$$(jq -er .baseline.symbol_sha256 manifests/native-runtime.json)"
 	test "$$(wc -l < src/native-runtime/fedora-exported-symbols.txt)" = "$$(jq -er .baseline.symbol_count manifests/native-runtime.json)"
 	bash -n src/native-runtime/prepare-source.sh
 srpm: validate
-	case '$(PACKAGE)' in material-decoration|plymouth-uke|at-spi2-core|gstreamer1|libaccounts-glib|libwacom|libstdcxx-uke-runtime|mesa) ;; *) echo 'Unsupported or withdrawn package' >&2; exit 1;; esac
+	case '$(PACKAGE)' in material-decoration|plymouth-uke|at-spi2-core|gstreamer1|libaccounts-glib|libwacom|libstdcxx-uke-runtime|mesa|upower|iio-sensor-proxy|accountsservice) ;; *) echo 'Unsupported or withdrawn package' >&2; exit 1;; esac
 	top="$$(realpath -m "$(outdir)/rpmbuild")"
 	mkdir -p "$$top"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
 	if jq -e --arg name '$(PACKAGE)' 'any(.packages[]; .name==$$name)' manifests/native-runtime.json >/dev/null; then
@@ -37,12 +36,14 @@ srpm: validate
 		cp manifests/material-decoration.json "$$top/SOURCES/material-decoration-source-lock.json"
 		cp packaging/material-decoration/*.patch "$$top/SOURCES/"
 	else
-		tar --sort=name --mtime=@1791158400 --owner=0 --group=0 --numeric-owner -cJf "$$top/SOURCES/plymouth-uke-1.0.0.tar.xz" --transform 's,^,plymouth-uke-1.0.0/,' LICENSE README.md src/plymouth-uke
+		tar --sort=name --mtime=@1791158400 --owner=0 --group=0 --numeric-owner -cJf "$$top/SOURCES/uke-plymonth-1.0.2.tar.xz" --transform 's,^,uke-plymonth-1.0.2/,' LICENSE README.md src/plymouth-uke
 	fi
 	cp "packaging/$(PACKAGE)/$(PACKAGE).spec" "$$top/SPECS/"
 	rpmbuild -bs --nodeps --target aarch64 --define "_topdir $$top" "$$top/SPECS/$(PACKAGE).spec"
 	mkdir -p "$(outdir)"
 	install -m644 "$$top/SRPMS/"*.src.rpm "$(outdir)/"
+track-rawhide:
+	bash ../packaging/families/host/track-rawhide.sh
 track-stable:
 	mkdir -p build/tracking
 	curl -fsSL --retry 3 https://api.github.com/repos/guiodic/material-decoration/releases/latest -o build/tracking/release.json

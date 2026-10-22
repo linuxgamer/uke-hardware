@@ -7,7 +7,7 @@
   "status": "rpm-source-candidates",
   "package_build_ready": true,
   "expected_packages": [
-    "plymouth-uke",
+    "uke-plymonth",
     "material-decoration"
   ],
   "nabu_reference_packages": [

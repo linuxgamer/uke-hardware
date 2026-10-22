@@ -1,5 +1,36 @@
 # Uke boot integration
 
+22 October 2026. Version `1.5.0` also owns the existing native Bluetooth
+factory-address bridge, service and udev rule. Its canonical C++ source and
+GPL-3.0-or-later license remain in `uke-desktop-integration`; the boot source RPM
+exports them without changing the protocol or protected persist checks. The
+existing shared RPM migration fragment preserves admitted unit enablement and
+activity across the old package's removal, including disabled and masked states.
+This is userspace BlueZ integration, not a kernel driver or an embedded address.
+Signed-package migration and physical controller checks are separate gates.
+
+Version `1.5.1` corrects RPM macro expansion in the state-preservation query.
+The source recipe now checks RPM's expanded scriptlet for its literal query
+tag. Version `1.5.0` did not preserve a previously enabled unit on replacement;
+that general migration result is superseded.
+
+22 October 2026. Version `1.4.0` owns the factory WLAN helper and its existing
+service directly. It replaces the separate `uke-wifi-factory` RPM while keeping
+its legacy package capability for dependency migration. The native helper,
+protected persist reads, NetworkManager ordering and per-network overrides are
+unchanged. Existing service enablement is preserved; installation adds no
+startup hook or network restart. A cold-boot address check remains a separate
+device gate. No per-device address is placed in kernel or DT source.
+
+21 October 2026 source follow-up: version 1.1.3 reconciles the journal's actual
+filesystem after verifying the physical installation profile. On ext4 or F2FS,
+the existing classifier overrides only the separate vendor NOCOW rule, which
+these filesystems cannot apply. Original journal ownership, ACL and retention
+rules remain active. Existing administrative overrides are preserved; removal,
+downgrade or a later filesystem change retires only this generated override.
+No additional service or process is introduced. Native fixtures cover repeated
+reconciliation and file/symlink substitutions; tablet deployment is separate.
+
 18 October 2026 source update: manual CDC API2 uses the existing root helper
 once per explicit on/off command. The continuous CDC watcher unit is removed;
 commands enable no service, root console or network gadget and save no startup
@@ -35,10 +66,11 @@ Nabu binary/geometry defaults cannot supply them. Detailed records are in
 Run `make validate`, `make test-native` or `make srpm`. Source archives remain in
 `referances/`; package/host output is ignored under `build/`.
 
-The optional `uke-kernel-update` package installs a native, checked `boot_b`
-writer. Automatic use requires a matching versioned kernel boot bundle and
-explicit local enablement. See [kernel updates](docs/KERNEL-UPDATES.md) for
-the package contract, recovery limits and validation status.
+The optional `uke-kernel-update` package validates matched installed kernel
+bundles. The Linux root retains its opt-in `boot_b` writer; version 1.1.0 adds
+guarded automatic staging into the inactive userdata boot slot. See
+[kernel updates](docs/KERNEL-UPDATES.md) and [userdata boot A/B](docs/USERDATA-AB.md)
+for the separate policies, recovery limits and validation status.
 
 On 2026-10-14, `uke-wifi-factory` passed host parser and wrong-partition rejection
 checks. Its C++ helper reads each tablet's own `persist/wlan/wlan_mac.bin` before
@@ -219,3 +251,10 @@ behavior. Release 16 packages the same option as a native chronyd drop-in,
 preserving the original environment options and service sandbox. It does not
 write the RTC or add another clock daemon. Original chronyd remains the single
 enabled time authority on the tested installation.
+
+20 October 2026: boot prerequisite reporting recognizes the explicit userdata
+root selector alongside the existing Linux selectors. This is read-only status;
+physical storage checks and userdata kernel activation remain separate. The
+earlier updater refused userdata writes. Version 1.1.0 supersedes that source
+limit with the guarded userdata path documented above. The new native fixtures
+do not establish on-tablet A/B acceptance or power-loss recovery.

@@ -1,0 +1,98 @@
+--- a/src/touch-thp.cpp
++++ b/src/touch-thp.cpp
+@@ -104,6 +104,19 @@
+     }
+     ~TouchPanelGuard() { touch_transfer_guard={}; }
+ };
++template<class Wait,class Notice>
++static bool wait_touch_panel(int descriptor,TouchPanelState &state,Wait wait,Notice notice) {
++    state=touch_panel_state(descriptor);
++    if(state.ready)return true;
++    notice();
++    while(running) {
++        wait();
++        if(!running)return false;
++        state=touch_panel_state(descriptor);
++        if(state.ready)return true;
++    }
++    return false;
++}
+ static void touch_start_normal(int fd,const Bytes &image,bool watchdog_idle=false) {
+     if(watchdog_idle) {
+         // Exact Uke OEM watchdog path: leave the FE reset loop before reloading.
+@@ -361,6 +374,7 @@
+         require(ioctl(spi,SPI_IOC_RD_MODE,&mode)==0 && mode==SPI_MODE_0,"Unexpected SPI mode");
+         std::filesystem::path panel_provider;
+         TouchPanelState admitted_panel{0,true};
++        std::signal(SIGTERM,stop_touch); std::signal(SIGINT,stop_touch);
+         if(installed) {
+             for(unsigned attempt=0;attempt<100;attempt++) {
+                 panel_provider=touch_panel_provider();
+@@ -370,13 +384,27 @@
+                     try {admitted_panel=touch_panel_state(initial);}
+                     catch(...) {close(initial);throw;}
+                     close(initial);
+-                    if(admitted_panel.ready) break;
++                    break;
+                 }
+                 pause_ms(100);
+             }
+-            require(!panel_provider.empty() && admitted_panel.ready,"O82 kernel panel-reset provider is not ready");
++            require(!panel_provider.empty(),"O82 kernel panel-reset provider is unavailable");
+             panel_event=open(panel_provider.c_str(),O_RDONLY|O_CLOEXEC);
+             require(panel_event>=0,"O82 panel event provider unavailable");
++            require(daemon || admitted_panel.ready,"O82 kernel panel-reset provider is not ready");
++            if(!wait_touch_panel(panel_event,admitted_panel,[&] {
++                pollfd changed{panel_event,POLLPRI|POLLERR,0};
++                int status;
++                do {status=poll(&changed,1,-1);}while(status<0 && errno==EINTR && running);
++                require((status>=0 || !running) && !(changed.revents&POLLNVAL),"O82 panel event wait failed");
++            },[&] {
++                // Complete daemon startup so graphical.target can activate the panel.
++                require(sd_notify(0,"READY=1\nSTATUS=Waiting for active panel; no touch input device")>=0,
++                        "Touch standby notification failed");
++                std::cout<<"Waiting for active O82 panel before touch initialization"<<std::endl;
++            })) {
++                close(panel_event);close(spi);return 0;
++            }
+         }
+         if(probe_rates) {
+             TouchPanelGuard guard(panel_event,admitted_panel);
+@@ -411,8 +439,7 @@
+                  <<std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now()-started).count()
+                  <<" ms; slots="<<nvt::kFingerSlots<<std::endl;
+-        std::signal(SIGTERM,stop_touch); std::signal(SIGINT,stop_touch);
+-        if(daemon) require(sd_notify(0,"READY=1")>=0,"Touch readiness notification failed");
++        if(daemon) require(sd_notify(0,"READY=1\nSTATUS=Touch input ready")>=0,"Touch readiness notification failed");
+         const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(600);
+         auto last_valid=std::chrono::steady_clock::now();
+         unsigned frames=0,rejected=0,contacts=0,coalesced_edges=0;
+--- a/tests/touch-input.cpp
++++ b/tests/touch-input.cpp
+@@ -76,6 +76,25 @@
+     write_file(state,std::string("7 1\n"));
+     assert(touch_panel_provider(panels)==state);
+     const int state_fd=open(state.c_str(),O_RDONLY|O_CLOEXEC);assert(state_fd>=0);
++    unsigned waits=0,notices=0;
++    TouchPanelState startup{};
++    assert(wait_touch_panel(state_fd,startup,[&]{assert(false);},[&]{assert(false);}));
++    assert((startup==TouchPanelState{7,true}));
++    write_file(state,std::string("7 0\n"));
++    assert(wait_touch_panel(state_fd,startup,[&] {
++        ++waits;write_file(state,std::string(waits==1?"8 0\n":"8 1\n"));
++    },[&]{++notices;}));
++    assert(waits==2 && notices==1 && (startup==TouchPanelState{8,true}));
++    write_file(state,std::string("9 0\n"));
++    assert(!wait_touch_panel(state_fd,startup,[&]{running=0;},[&]{++notices;}));
++    assert(!startup.ready && notices==2);
++    running=1;
++    write_file(state,std::string("bad\n"));
++    bool startup_rejected=false;
++    try {wait_touch_panel(state_fd,startup,[&]{assert(false);},[&]{assert(false);});}
++    catch(const std::exception &){startup_rejected=true;}
++    assert(startup_rejected);
++    write_file(state,std::string("7 1\n"));
+     assert(lseek(state_fd,1,SEEK_SET)==1);
+     assert((touch_panel_state(state_fd)==TouchPanelState{7,true}));
+     assert(lseek(state_fd,0,SEEK_CUR)==1); // Positional reads do not consume the provider.

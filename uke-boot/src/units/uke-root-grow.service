@@ -1,0 +1,23 @@
+[Unit]
+Description=Complete the Uke userdata filesystem growth once per installation
+ConditionFirmware=device-tree-compatible(xiaomi,uke)
+ConditionKernelCommandLine=root=PARTLABEL=userdata
+ConditionPathExists=!/var/lib/senemos/installation/online-grow-complete
+After=local-fs.target uke-install-profile.service
+Before=multi-user.target systemd-user-sessions.service display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/senemos-uke/uke-install-profile grow
+StateDirectory=senemos/installation
+StateDirectoryMode=0700
+# Never interrupt a filesystem metadata operation.
+TimeoutStartSec=infinity
+UMask=0077
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

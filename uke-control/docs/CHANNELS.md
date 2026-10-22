@@ -1,5 +1,37 @@
 # Package channels
 
+21 October 2026 vendor correction: planned replacements use an exact package
+NEVRA with its selected repository and vendor as per-job constraints. This
+permits declared renames under `allow_vendor_change=False` without changing
+that global setting or allowing unrelated vendor transitions. libdnf5 5.4.6
+applies these exceptions through spec jobs; its explicit package-ID jobs ignore
+the vendor setting. The resolved transaction must still contain each exact
+replacement and may not remove packages or alter protected identities.
+
+Reviewed implementation: DNF5 5.4.6.0, commit
+`1b2de4bdc2f25a6de2884fb2cf81f80a8ce2a567`,
+[`add_rpms_to_goal`, `add_install_to_goal` and `add_reinstall_to_goal`](https://github.com/rpm-software-management/dnf5/blob/1b2de4bdc2f25a6de2884fb2cf81f80a8ce2a567/libdnf5/base/goal.cpp).
+Signed host fixtures run with global vendor changes disabled; downgrade,
+same-NEVRA replacement, combined update/rename and original Fastfetch return
+pass, while an unrelated foreign-vendor candidate remains unchanged. The old
+package-ID path reproduces the vendor refusal. These fixtures do not activate
+a tablet kernel or establish physical behavior.
+
+21 October 2026 private-data correction: `uke-local-touch-data` is a retained
+device-private package, outside public channel synchronization. Its absence from
+COPR does not prevent sync/update. Public candidates with that exact name are
+excluded; any indirect transaction that replaces or removes it is refused.
+The exception does not cover other `uke-local-*` names or obsolete generic
+firmware providers. Calibration is never uploaded or substituted from COPR.
+
+21 October 2026 correction: without a saved selection, status and implicit
+operations use exactly one enabled normal stable/test COPR. They do not silently
+select stable over an enabled test repository. Missing, multiple or custom-only
+repositories require an explicit selection. Unstable preference must be saved
+explicitly because it shares the test repository. Unreadable, empty, malformed,
+symlink or hardlinked channel records are refused. Status reads no package
+metadata from the network; private pending state remains root-only.
+
 18 October 2026. Native C++ implementation against libdnf5 5.4.6 or later,
 initially scoped to Fedora Rawhide AArch64 on Uke. Host fixture results and
 tablet acceptance are separate. The original Fedora repositories and unrelated
@@ -53,6 +85,20 @@ The target `uke-control` must provide `uke-control(channel-api) = 1`; otherwise
 the transition is refused before changes. Promote a compatible manager into
 the destination first. Downgrading to a manager without these commands would
 remove the return path even if the RPM transaction itself succeeded.
+
+20 October 2026: renamed child packages are accepted only through paired
+Provides/Obsoletes in the selected signed repository. Different replacement
+names are ambiguous and fail. The solver must replace the old package and
+install the declared new package together; a virtual Provide alone is
+insufficient. Kernel packages, including the old KVM namespace, remain retained.
+The normal-kernel selector does not infer a normal kernel from an isolated KVM
+core. Source families and child names are defined in
+[`packaging/families`](../packaging/families/README.md).
+
+The withdrawn Fastfetch fork is a deliberate exception: the exact replacement
+must come from Fedora's `rawhide` repository, including a necessary downgrade.
+No other project package is handed to an arbitrary outside repository. If the
+original replacement is unavailable, the whole transaction is refused.
 
 `sync` repairs the saved selection; without a saved selection the default is
 stable. `update` performs the same synchronization and upgrades the other

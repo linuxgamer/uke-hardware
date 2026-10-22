@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     s.current_ua = -1000000; s.voltage_uv = 4000000; s.energy_uwh = 19000000;
     s.learned_full_uah = 8000000; s.design_full_uah = 8800000; s.soc = 50;
     assert(!retention(s, q));
-    q.current = q.energy = q.learned_capacity = q.capacity_basis = true; q.reserve_uwh = 1000000;
+    q.current = q.voltage = q.energy = q.learned_capacity = q.capacity_basis = true; q.reserve_uwh = 1000000;
     assert(std::fabs(*retention(s, q) - 90.9090909) < 0.001);
     s.design_full_uah = 0; assert(!retention(s, q)); s.design_full_uah = 8800000;
     q.learned_capacity = false; assert(!retention(s, q)); q.learned_capacity = true;
@@ -32,6 +32,16 @@ int main(int argc, char **argv) {
     }
     auto empty = forecast.empty(s, q);
     assert(empty.seconds && std::fabs(*empty.seconds - 16200) < 0.01);
+    Forecast irregular;
+    auto unequal = s;
+    for (const auto [seconds, current] : std::array<std::pair<unsigned, int>, 3>{{
+            {1, -1000000}, {2, -1400000}, {32, -1400000}}}) {
+        unequal.boottime_ns = unequal.monotonic_ns = uint64_t(seconds) * 1000000000ULL;
+        unequal.current_ua = current;
+        irregular.observe(unequal, q);
+    }
+    const auto weighted = irregular.empty(unequal, q);
+    assert(weighted.seconds && std::fabs(*weighted.seconds - 11625) < 0.01);
     s.current_ua = 0; forecast.observe(s, q); assert(!forecast.empty(s, q).seconds);
     s.current_ua = 500000; s.soc = 79; s.effective_target = 80; q.target_effective = true;
     s.conditions = "profile-1:contract-1:normal:load-1";

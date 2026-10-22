@@ -1,0 +1,14 @@
+# Linux exports Wireless as a standard external power-supply type.
+# Online state still comes from sysfs; unknown types retain their diagnostics.
+--- a/src/linux/up-device-supply.c
++++ b/src/linux/up-device-supply.c
+@@ -565,7 +565,8 @@
+ 	if (device_type == NULL)
+ 		return type;
+ 
+-	if (g_ascii_strcasecmp (device_type, "mains") == 0) {
++	if (g_ascii_strcasecmp (device_type, "mains") == 0 ||
++	    g_ascii_strcasecmp (device_type, "wireless") == 0) {
+ 		type = UP_DEVICE_KIND_LINE_POWER;
+ 		goto out;
+ 	}

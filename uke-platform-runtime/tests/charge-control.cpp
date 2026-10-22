@@ -22,6 +22,7 @@ Profile profile() {
     p.ack_bytes = 12; p.usb_type = 1; p.may_enable = true; p.standard_clients = true;
     p.temperature_min = 100; p.temperature_max = 400; p.voltage_min_uv = 3000000; p.voltage_max_uv = 4400000;
     p.current_abs_max_ua = 3000000; p.cap_resume_percent = 70;
+    p.external_thermal = {{{1000,40000},{2000,41000},{3000,42000}}};
     p.current_control = true; p.minimum_ua = 100000; p.maximum_ua = 2000000;
     p.source_budget_ua = 1500000; p.slow_ua = 500000; p.restore_ua = 1000000;
     p.increase_step_ua = 100000; p.increase_dwell_ns = 10 * second; p.measurement_max_age_ns = 5 * second;
@@ -30,6 +31,7 @@ Profile profile() {
 }
 State sample(uint64_t time = 2 * second) {
     State s; s.compiled = true; s.current_compiled = true; s.instance = 42;
+    s.protection_compiled = true;
     s.generation = 7; s.firmware = 2; s.source = 3; s.invalidation_ns = second / 2;
     s.live = true; s.standard_clients = true; s.evidence = sha; s.expires_ns = 32 * second;
     s.enabled = true; s.start = 70; s.end = 80; s.verified = true; s.verified_ns = time;
@@ -65,6 +67,30 @@ public:
 };
 }
 int main() {
+    {
+        const auto p=parse_protection("1 42 7 2 3 2000000000 1 1");
+        assert(p.enabled && p.moisture_reported);
+        for(const auto &bad:{std::string("1 42 7 2 3 0 1 0"),std::string("1 42 7 2 3 2000000000 2 0"),
+            std::string("1 42 7 2 3 2000000000 1 2"),std::string("1 42 7 2 3 2000000000 1 0 extra")})
+            rejects([&]{parse_protection(bad);});
+        const auto cached=parse_protection_cache("1 42 7 2 3 2000000000 1 0 1 1 1 0 0");
+        assert(cached.valid && cached.wet_latched && cached.input_suspend_readback && !cached.moisture_reported);
+        rejects([&]{parse_protection_cache("1 42 7 2 3 2000000000 1 0 0 1 1 0 0");});
+        assert(parse_protection_cache("1 42 7 2 3 2000000000 1 0 1 0 1 0 2").faults==2);
+        rejects([&]{parse_protection_cache("1 42 7 2 3 2000000000 1 0 1 0 0 0 16");});
+        Context before;before.provider_verified=true;before.state=sample();before.boot_id="test";
+        before.kernel_release="synthetic";before.boottime_ns=second;
+        auto after=before;after.boottime_ns=3*second;
+        assert(protection_match_context(p,before,after));
+        before.state.compiled=false;after.state.compiled=false;
+        assert(protection_match_context(p,before,after)); // Diagnostic does not admit an actuator.
+        before.state.compiled=true;after.state.compiled=true;
+        after.state.source++;assert(!protection_match_context(p,before,after));
+        after=before;after.boottime_ns=8*second;assert(!protection_match_context(p,before,after));
+        Fake io;Session session(io,profile(),io.value);
+        session.enable_moisture(2*second);session.wet_guard(2*second);
+        assert(io.writes.size()==2 && io.writes[0]=="uke_charge_moisture_enable" && io.writes[1]=="uke_charge_wet_guard");
+    }
     {
         const std::string text="1 42 7 2 3 2000000000 0 0 0";
         const auto settings=parse_settings(text);
@@ -155,6 +181,8 @@ int main() {
     const std::string text = "1 1 1 7 2 3 42 32000000000 1 70 80 1 2000000000 0 1 " + sha +
         " 1 1 1000000 1 2000000000 250 4000000 500000 2000000000 1 500000000\n";
     assert(parse_state(text).current_ua == 1000000);
+    assert(!parse_state(text).protection_compiled);
+    auto upgraded=text;upgraded[0]='2';assert(parse_state(upgraded).protection_compiled);
     rejects([&] { parse_state(text + " extra"); });
     auto negative = text; negative.replace(0, 1, "-1"); rejects([&] { parse_state(negative); });
     auto overflow = text; overflow.replace(6, 1, "4294967296"); rejects([&] { parse_state(overflow); });

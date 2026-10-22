@@ -10,8 +10,9 @@
 #include <string>
 inline nvt::Geometry touch_geometry(const char *path) {
     std::ifstream file(path,std::ios::binary);
-    std::string data{std::istreambuf_iterator<char>(file),{}};
-    if(data.size()!=36228) throw std::runtime_error("Unqualified O82 configuration size");
+    std::string data(36228,'\0');
+    if(!file.read(data.data(),data.size()) || file.peek()!=EOF)
+        throw std::runtime_error("Unqualified O82 configuration size");
     std::array<unsigned char,32> digest{};
     if(!SHA256(reinterpret_cast<const unsigned char *>(data.data()),data.size(),digest.data()))
         throw std::runtime_error("Configuration digest unavailable");

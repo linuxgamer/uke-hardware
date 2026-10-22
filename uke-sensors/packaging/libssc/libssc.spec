@@ -8,21 +8,20 @@ Source0: libssc-v%{version}.tar.gz
 Source1: libssc-light-constructor.cpp
 Source2: libssc-proximity-context.cpp
 Source3: libssc-mount-matrix.sh
+Source4: libssc-proximity-values.sh
 Patch0: 0001-optional-python-mocks.patch
 Patch1: 0002-report-qrtr-error.patch
 Patch2: 0003-gyroscope-cli-units.patch
 Patch3: 0004-light-data-type-and-validity.patch
 Patch4: 0005-preserve-nonzero-mount-matrix.patch
 Patch5: 0006-bounded-proximity-unpack-context.patch
+Patch6: 0007-reject-invalid-proximity-values.patch
 BuildRequires: bash gcc gcc-c++ meson ninja-build pkgconf-pkg-config
-%if 0%{?fedora} == 44
-BuildRequires: python3 meson
-%else
 BuildRequires: python3 = 3.15.0-1.fc46
 BuildRequires: meson = 1.12.1-2.fc46
-%endif
 BuildRequires: pkgconfig(glib-2.0) pkgconfig(gio-2.0) pkgconfig(qmi-glib)
 BuildRequires: pkgconfig(libprotobuf-c) protobuf-c-compiler protobuf-compiler
+BuildRequires: libasan libubsan
 ExclusiveArch: aarch64
 
 %description
@@ -57,6 +56,8 @@ LD_LIBRARY_PATH="$PWD/build/src" ./light-constructor-test
 g++ -std=c++20 -UNDEBUG -Wall -Wextra -Werror -pthread -I src %{SOURCE2} \
     $(pkg-config --cflags --libs glib-2.0) -o proximity-context-test
 ./proximity-context-test
+bash %{SOURCE4} src/libssc-sensor-proximity.c
+SANITIZE=1 bash %{SOURCE4} src/libssc-sensor-proximity.c
 if find %{buildroot} -type f \( -name '*.py' -o -iname '*python*' \) | grep -q .; then exit 1; fi
 
 %files
@@ -70,8 +71,9 @@ if find %{buildroot} -type f \( -name '*.py' -o -iname '*python*' \) | grep -q .
 %{_libdir}/pkgconfig/libssc.pc
 
 %changelog
-* Mon Oct 19 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 0.4.4-6
-- Use Fedora 44 Python and Meson for the native SSC library build.
+* Wed Oct 21 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.4.4-6
+- Reject invalid proximity states without aborting the sensor client.
+- Exercise the actual callback with ordinary and sanitized host fault fixtures.
 
 * Sun Oct 18 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.4.4-5
 - Add bounded value-free context to existing proximity unpack warnings.

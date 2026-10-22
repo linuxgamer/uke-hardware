@@ -9,7 +9,7 @@
 
 namespace uke::offline {
 struct Snapshot {
-    bool valid = false, input_known = false, online = false;
+    bool valid = false, input_known = false, online = false, power_estimated = false;
     int percent = 0;
     std::string status, health;
     std::optional<std::int64_t> power_uw, temperature_decic, full_seconds;
@@ -71,6 +71,7 @@ struct Screen {
         std::string state = "WAITING FOR BATTERY";
         if (s.valid) {
             if (s.health != "Good") state = "CHECK BATTERY";
+            else if (s.input_known && s.online && s.power_uw && *s.power_uw<0) state = "ADAPTER - BATTERY DRAINING";
             else if (s.status == "Charging") state = "CHARGING";
             else if (s.status == "Full") state = "FULL";
             else if (s.online && s.status == "Not charging") state = "NOT CHARGING";
@@ -82,11 +83,13 @@ struct Screen {
             const auto magnitude=tenths<0?-tenths:tenths;
             return std::string(tenths<0?"-":"")+std::to_string(magnitude/10)+"."+std::to_string(magnitude%10);
         };
-        const auto time=s.full_seconds && s.status=="Charging" && s.online ? std::to_string((*s.full_seconds+59)/60)+" MIN" : "-- MIN";
-        const auto power=s.power_uw ? decimal(*s.power_uw/100000)+"W" : "-- W";
-        const auto temp=s.temperature_decic ? decimal(*s.temperature_decic)+"C" : "-- C";
+        const bool net_charging=s.valid && s.health=="Good" && s.input_known && s.online &&
+            s.status=="Charging" && s.power_uw && *s.power_uw>0;
+        const auto time=net_charging && s.full_seconds && *s.full_seconds>0 ? std::to_string((*s.full_seconds+59)/60)+" MIN" : "-- MIN";
+        const auto power=s.valid && s.power_uw ? decimal(*s.power_uw/100000)+"W" : "-- W";
+        const auto temp=s.valid && s.temperature_decic ? decimal(*s.temperature_decic)+"C" : "-- C";
         text(time,390,2,white,120); text(power,390,2,white,360); text(temp,390,2,white,600);
-        text("TO FULL",416,1,dim,120); text("BATTERY",416,1,dim,360); text("TEMP",416,1,dim,600);
+        text("TO FULL",416,1,dim,120); text(s.power_estimated ? "BATTERY ESTIMATE" : "BATTERY",416,1,dim,360); text("TEMP",416,1,dim,600);
         text("HOLD POWER TO START",459,1,dim);
     }
 };

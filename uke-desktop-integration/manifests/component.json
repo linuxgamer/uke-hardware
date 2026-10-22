@@ -7,9 +7,7 @@
   "status": "experimental-desktop-integration",
   "package_build_ready": true,
   "expected_packages": [
-    "uke-adaptive-display",
-    "uke-power-profile-backend",
-    "uke-bluetooth"
+    "uke-adaptive-display"
   ],
   "nabu_reference_packages": [
     "nabu-desktop-integration"
@@ -38,5 +36,7 @@
   "hardware_tested": false,
   "boot_tested": false,
   "python_target_payload": false,
-  "source_directory": "uke-desktop-integration"
+  "source_directory": "uke-desktop-integration",
+  "bluetooth_source_owner": "uke-desktop-integration",
+  "bluetooth_package_owner": "uke-boot-integration"
 }

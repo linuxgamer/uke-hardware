@@ -1,0 +1,26 @@
+# Downstream: render-only primary nodes return EOPNOTSUPP for KMS resources.
+# Keep the existing no-display WSI path and all other query failures.
+diff --git a/src/freedreno/vulkan/tu_knl.cc b/src/freedreno/vulkan/tu_knl.cc
+--- a/src/freedreno/vulkan/tu_knl.cc
++++ b/src/freedreno/vulkan/tu_knl.cc
+@@ -10,1 +10,5 @@
++#include <errno.h>
+ #include <fcntl.h>
++#ifdef HAVE_LIBDRM
++#include <xf86drmMode.h>
++#endif
+@@ -437,2 +441,14 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
+       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
++#ifdef HAVE_LIBDRM
++      if (master_fd >= 0) {
++         drmModeResPtr resources = drmModeGetResources(master_fd);
++         if (resources)
++            drmModeFreeResources(resources);
++         else if (errno == EOPNOTSUPP) {
++            /* A render-only primary node cannot supply direct displays. */
++            close(master_fd);
++            master_fd = -1;
++         }
++      }
++#endif
+    }

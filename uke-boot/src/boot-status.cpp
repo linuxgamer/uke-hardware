@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
             const auto end = cmdline.find_first_of(" \t\r\n", begin);
             const auto argument = cmdline.substr(begin, end - begin);
             if (argument == "root=LABEL=UKE_LINUX" || argument == "root=PARTLABEL=linux" ||
-                argument == "root=PARTLABEL=uke_linux") root_selected = true;
+                argument == "root=PARTLABEL=uke_linux" || argument == "root=PARTLABEL=userdata") root_selected = true;
             else if (argument.rfind("root=", 0) == 0) root_selected = false;
             if (end == std::string::npos) break;
             begin = end + 1;

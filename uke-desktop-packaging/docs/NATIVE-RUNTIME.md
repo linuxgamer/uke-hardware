@@ -1,5 +1,11 @@
 # Python-free Fedora native runtime variants
 
+21 October 2026 update: the active lock now tracks ten Fedora bases through the
+[Rawhide source workflow](../../packaging/families/RAWHIDE-TRACKING.md), including
+UPower, SensorProxy, AccountsService and the native PPD backend. Source/tool pins below describe
+earlier measurements; the JSON lock records the current complete inputs.
+Original KDE application variants remain withdrawn.
+
 **Current policy:** Never clone, fork or rebuild KDE desktop applications as Uke
 variants. Plasma/Dolphin recipes described in older evidence below are withdrawn
 from the active source allowlist and automatic COPR publication. Six non-KDE

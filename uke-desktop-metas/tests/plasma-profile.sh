@@ -5,7 +5,7 @@ profile=src/plasma.json
 spec=packaging/uke-desktop-metas.spec
 jq -e '
   .schema_version == 1 and .device == "uke" and .soc == "SM7675" and
-  .package == "kde-plasma-uke-meta" and .architecture == "aarch64" and
+  .package == "uke-kde-plasma-meta" and .architecture == "aarch64" and
   .boot_tested == false and .hardware_tested == false and
   .automatic_session_or_display_configuration == false and
   .original_fedora_dependency_exception_date == "2026-10-14" and
@@ -20,8 +20,8 @@ diff -u <(jq -r '.packages[]' "$profile" | LC_ALL=C sort) \
          /^# END ORIGINAL FEDORA PLASMA PACKAGES$/ {selection=0}
          selection && /^Requires:/ {print $2}' "$spec" | LC_ALL=C sort)
 # The console meta conflicts with Python; Plasma must not pull it indirectly.
-if awk '/^%package -n kde-plasma-uke-meta$/ {selection=1; next}
-       /^%description -n kde-plasma-uke-meta$/ {selection=0}
+if awk '/^%package -n uke-kde-plasma-meta$/ {selection=1; next}
+       /^%description -n uke-kde-plasma-meta$/ {selection=0}
        selection && /^(Requires|Recommends):.*uke-(core-meta|desktop-metas)/ {bad=1}
        END {exit !bad}' "$spec"; then
   echo 'Plasma must not require the strict console meta' >&2

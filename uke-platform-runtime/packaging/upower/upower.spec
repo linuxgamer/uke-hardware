@@ -1,7 +1,7 @@
 Summary:        Power Management Service
 Name:           upower
 Version:        1.91.5
-Release:        2.uke4%{?dist}
+Release:        8%{?dist}
 License:        GPL-2.0-or-later
 URL:            https://upower.freedesktop.org/
 Source0:        https://gitlab.freedesktop.org/upower/%{name}/-/archive/v%{version}/%{name}-v%{version}.tar.bz2
@@ -11,6 +11,7 @@ Source3:        upower-fixture.sh
 Source4:        ac-net-discharge.umockdev
 Patch0:         0001-required-threshold-write-errors.patch
 Patch1:         0002-preserve-reported-health-capacity.patch
+Patch2:         0003-recognize-standard-wireless-supplies.patch
 
 BuildRequires:  meson
 BuildRequires:  git
@@ -150,6 +151,11 @@ if find %{buildroot} -type f \( -name '*.py' -o -name '*.pyc' -o -name 'python*'
 %{_datadir}/gtk-doc/html/UPower/*
 
 %changelog
+* Wed Oct 21 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.91.5-8
+- Recognize the standard Wireless type while retaining actual online state.
+- Exercise offline, online, malformed, missing and unknown inputs on a private bus.
+- Publish through the current Rawhide source family with fresh coherent revisions.
+
 * Sun Oct 18 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.91.5-2.uke4
 - Exercise the original daemon's AC and discharging policy on a private bus.
 - Correct the fixture's shell quoting and retain diagnostics on failure.

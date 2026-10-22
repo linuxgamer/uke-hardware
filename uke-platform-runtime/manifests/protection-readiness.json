@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-20",
+  "device": "uke",
+  "qualification": "unqualified",
+  "control_metadata_version": 2,
+  "lease_version": 2,
+  "pack_limits": null,
+  "physical_acceptance": false,
+  "features": [
+    {"id":"usb_moisture_observation","source":"fixed_usb_properties_8_9","qualified":false},
+    {"id":"usb_moisture_enable","source":"offline_enable_only_with_readback_and_uncertainty_latch","qualified":false},
+    {"id":"wet_charge_inhibit","source":"qualified_os3_0_304_input_suspend53_and_owned_clear_policy","qualified":false},
+    {"id":"periodic_charge_fault_inhibit","source":"qualified_thermal_health_voltage_current_and_failed_measurement_latches","qualified":false},
+    {"id":"desktop_moisture_notification","source":"cached_status_and_original_freedesktop_notifications","qualified":false},
+    {"id":"charger_connector_temperature","source":"three_fixed_iio_channels_and_independent_reviewed_ranges","qualified":false},
+    {"id":"battery_health_voltage_current_temperature","source":"existing_fresh_qualified_control_guards","qualified":false},
+    {"id":"firmware_cv_jeita_termination","source":"firmware_owner_no_ap_override","qualified":false},
+    {"id":"charger_watchdog","source":"selected_firmware_contract_missing_no_ap_override","qualified":false},
+    {"id":"pack_ovp_ocp_short_circuit","source":"selected_parts_and_autonomous_response_unconfirmed","qualified":false}
+  ]
+}

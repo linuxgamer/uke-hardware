@@ -8,9 +8,17 @@
 #include <stdexcept>
 #include <string_view>
 #include <unistd.h>
+#include "charge-notify.hpp"
+#include "desktop.hpp"
+#include "wake.hpp"
 static void help() {
-    std::cout << "uke-control 0.1.0 — native device management and development diagnostics\n"
+    std::cout << "uke-control 1.2.0 — native device management and development diagnostics\n"
       "  status                      Swap, qualified charge controls and USB state\n"
+      "  desktop status              Existing standard desktop interfaces; no activation\n"
+      "  hardware status             Cached chipset/audio/media/input paths; no device access\n"
+      "  wake status                 Driver wake permissions and unsupported event controls\n"
+      "  wake set SOURCE on|off      Save and apply one wake permission (root)\n"
+      "  wake apply                  Restore saved permissions before suspend (root)\n"
       "  brunch stable|test|unstable  Switch Uke COPR and synchronize its packages (root)\n"
       "  brunch sync|status          Repair selected channel, or show selection\n"
       "  branch ...                  Alias for brunch; --dry-run and --yes supported\n"
@@ -28,11 +36,16 @@ static void help() {
       "  charge status               Native control metadata, or standard capability\n"
       "  charge capabilities|admission|protocols  Native backend metadata\n"
       "  charge settings             Read three firmware threshold fields (root; no SET)\n"
+      "  charge protection           Read firmware moisture fields (root; no SET)\n"
+      "  charge protection-status    Read cached moisture and inhibit status\n"
+      "  charge moisture-enable      Enable-only protection request (qualified, offline)\n"
+      "  charge notifications        Desktop-session moisture notifications\n"
       "  charge enable-cap80         Enable existing 70-80 cap with USB input off (root)\n"
       "  charge apply-cap80          One-shot existing 70-80 request; effect unverified (root)\n"
       "  charge mode MODE            Request qualified charge80, hold80-90, slow or automatic\n"
       "  charge limit PERCENT        Request the qualified 80% cap or a supported standard threshold\n"
       "  usb status                  Cached Type-C, USB topology, NIC and display JSON\n"
+      "  firmware status             Cached SCMI discovery and remote-processor JSON\n"
       "  usb watch [SECONDS]         Observe changes at 1 Hz for 1..300 seconds\n"
       "  usb request data host|device Request a Type-C data-role swap (root)\n"
       "  set cdc on|off              Explicit CDC ACM opt-in; default off (root)\n"
@@ -50,6 +63,17 @@ int main(int argc,char** argv) {
         }
         if(const int result=uke::charge::policy_command(argc,argv);result>=0)return result;
         std::string command=argv[1];
+        if(command=="wake") {
+            if(argc==3&&std::string_view(argv[2])=="check") return uke::wake::applicable()?0:1;
+            if(argc==3&&std::string_view(argv[2])=="status") {std::cout<<uke::wake_status();return 0;}
+            if(argc==3&&std::string_view(argv[2])=="apply") {uke::wake_apply();return 0;}
+            if(argc==5&&std::string_view(argv[2])=="set") {
+                const std::string_view value=argv[4];
+                if(value!="on"&&value!="off")throw std::runtime_error("Wake permission must be on or off");
+                uke::wake_set(argv[3],value=="on");std::cout<<uke::wake_status();return 0;
+            }
+        }
+        if(command=="desktop"&&argc==3&&std::string_view(argv[2])=="status"){std::cout<<uke::desktop::status();return 0;}
         if(command=="brunch"||command=="branch"||command=="update") {
             execv("/usr/libexec/uke-control/packages",argv+1);
             throw std::runtime_error("The native package manager helper is missing");
@@ -66,6 +90,8 @@ int main(int argc,char** argv) {
         if(command=="test"){execv("/usr/libexec/uke-control/tests",argv+1);throw std::runtime_error("Install uke-control-tests from the development repository");}
         if(command=="--self-test"&&argc==2){uke::self_test();return 0;}
         if(command=="status"&&argc==2){std::cout<<uke::status();return 0;}
+        if(command=="firmware"&&argc==3&&std::string_view(argv[2])=="status"){std::cout<<uke::firmware_status();return 0;}
+        if(command=="hardware"&&argc==3&&std::string_view(argv[2])=="status"){std::cout<<uke::hardware_status();return 0;}
         if(command=="boot"&&argc==2){uke::boot();return 0;}
         if(command=="inventory"&&(argc==2||(argc==3&&std::string_view(argv[2])=="--refresh"))){std::cout<<uke::inventory(argc==3);return 0;}
         if(command=="swap") {
@@ -74,13 +100,17 @@ int main(int argc,char** argv) {
             if(argc==4&&std::string_view(argv[2])=="set"){uke::swap_set(argv[3]);return 0;}
         }
         if(command=="charge") {
+            if(argc==3&&std::string_view(argv[2])=="notifications") {uke::charge::moisture_notifications();return 0;}
+            if(argc==3&&std::string_view(argv[2])=="moisture-enable") {
+                auto result=uke::charge_enable_moisture();std::cout<<result.output;return result.status;
+            }
             if(argc==3&&std::string_view(argv[2])=="enable-cap80") {
                 auto result=uke::charge_enable_preconfigured_cap();std::cout<<result.output;return result.status;
             }
             if(argc==3&&std::string_view(argv[2])=="apply-cap80") {
                 auto result=uke::charge_apply_preconfigured_cap();std::cout<<result.output;return result.status;
             }
-            if(argc==3&&(std::string_view(argv[2])=="capabilities"||std::string_view(argv[2])=="admission"||std::string_view(argv[2])=="protocols"||std::string_view(argv[2])=="settings")) {
+            if(argc==3&&(std::string_view(argv[2])=="capabilities"||std::string_view(argv[2])=="admission"||std::string_view(argv[2])=="protocols"||std::string_view(argv[2])=="settings"||std::string_view(argv[2])=="protection"||std::string_view(argv[2])=="protection-status")) {
                 auto result=uke::charge_control_query(argv[2]);std::cout<<result.output;return result.status;
             }
             if(argc==3&&std::string_view(argv[2])=="status"){std::cout<<uke::charge_status();return 0;}

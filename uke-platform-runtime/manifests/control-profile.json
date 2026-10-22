@@ -14,5 +14,7 @@
   "may_change_feature": false,
   "standard_clients": false,
   "current_control": false,
-  "current_limits": null
+  "current_limits": null,
+  "external_thermal_limits": null,
+  "safety_backend": null
 }

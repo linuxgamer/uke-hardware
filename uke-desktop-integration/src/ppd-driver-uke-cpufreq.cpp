@@ -3,20 +3,42 @@
 #include "ppd-driver-uke-cpufreq.h"
 extern "C" {
 #include "ppd-utils.h"
+#include <glib/gstdio.h>
 #include <gudev/gudev.h>
 }
+#include <cerrno>
 #include <cstring>
 #include <initializer_list>
 
 struct _PpdDriverUkeCpufreq {
     PpdDriverCpu parent_instance;
     GUdevClient *client;
-    bool awaiting_gpu;
+    bool awaiting_provider;
     const char *gpu_preference;
 };
 G_DEFINE_TYPE(PpdDriverUkeCpufreq, ppd_driver_uke_cpufreq, PPD_TYPE_DRIVER_CPU)
 static constexpr unsigned policies[] = {0, 3, 7};
 static constexpr const char *gpu = "/sys/class/devfreq/3d00000.qcom,kgsl-3d0/";
+
+enum class NativeHandoff { legacy, pending, ready };
+static NativeHandoff native_handoff() {
+    g_autofree char *version_path = ppd_utils_get_sysfs_path("/sys/module/uke_platform_profile/version");
+    g_autofree char *version = nullptr;
+    g_autoptr(GError) error = nullptr;
+    if (!g_file_get_contents(version_path, &version, nullptr, &error)) {
+        if (!g_error_matches(error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) return NativeHandoff::pending;
+        g_autofree char *module = g_path_get_dirname(version_path);
+        GStatBuf metadata{};
+        return g_stat(module, &metadata) < 0 && errno == ENOENT ? NativeHandoff::legacy : NativeHandoff::pending;
+    }
+    if (strcmp(g_strchomp(version), "1")) return NativeHandoff::pending;
+    g_autofree char *status_path = ppd_utils_get_sysfs_path("/sys/module/uke_platform_profile/parameters/probe_status");
+    g_autofree char *status = nullptr;
+    if (!g_file_get_contents(status_path, &status, nullptr, nullptr)) return NativeHandoff::pending;
+    g_strchomp(status);
+    if (!strcmp(status, "-1")) return NativeHandoff::legacy;
+    return !strcmp(status, "1") ? NativeHandoff::ready : NativeHandoff::pending;
+}
 
 static char *gpu_path(const char *leaf) {
     g_autofree char *path = g_strconcat(gpu, leaf, nullptr);
@@ -51,12 +73,18 @@ static bool read_is(unsigned policy, const char *leaf, const char *expected) {
 
 static PpdProbeResult probe(PpdDriver *driver) {
     auto self = PPD_DRIVER_UKE_CPUFREQ(driver);
-    self->awaiting_gpu = false;
+    self->awaiting_provider = false;
     g_autofree char *path = ppd_utils_get_sysfs_path("/sys/firmware/devicetree/base/compatible");
     g_autofree char *compatible = nullptr;
     gsize length = 0;
     if (!g_file_get_contents(path, &compatible, &length, nullptr) || length < sizeof("xiaomi,uke") ||
         memcmp(compatible, "xiaomi,uke", sizeof("xiaomi,uke"))) return PPD_PROBE_RESULT_FAIL;
+    const auto handoff = native_handoff();
+    if (handoff == NativeHandoff::ready) return PPD_PROBE_RESULT_FAIL;
+    if (handoff == NativeHandoff::pending) {
+        self->awaiting_provider = true;
+        return PPD_PROBE_RESULT_DEFER;
+    }
     for (unsigned policy : policies) {
         if (!read_is(policy, "scaling_driver", "qcom-cpufreq-hw")) return PPD_PROBE_RESULT_FAIL;
         g_autofree char *available_path = policy_path(policy, "scaling_available_governors");
@@ -69,7 +97,7 @@ static PpdProbeResult probe(PpdDriver *driver) {
     g_autofree char *gpu_id_path = gpu_path("device/of_node/compatible");
     g_autofree char *gpu_id = nullptr;
     if (!g_file_get_contents(gpu_id_path, &gpu_id, &length, nullptr)) {
-        self->awaiting_gpu = true;
+        self->awaiting_provider = true;
         return PPD_PROBE_RESULT_DEFER;
     }
     if (length < sizeof("qcom,adreno-43030b00") ||
@@ -82,6 +110,10 @@ static PpdProbeResult probe(PpdDriver *driver) {
 
 static gboolean activate(PpdDriver *driver, PpdProfile profile, PpdProfileActivationReason, GError **error) {
     auto self = PPD_DRIVER_UKE_CPUFREQ(driver);
+    if (native_handoff() != NativeHandoff::legacy) {
+        g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_BUSY, "The native platform-profile provider owns this transition");
+        return FALSE;
+    }
     const char *governor;
     switch (profile) {
     case PPD_PROFILE_POWER_SAVER: governor = "powersave"; break;
@@ -162,11 +194,12 @@ static GObject *constructor(GType type, guint count, GObjectConstructParam *para
     g_object_set(object, "driver-name", "uke-cpufreq", "profiles",
                  PPD_PROFILE_POWER_SAVER | PPD_PROFILE_BALANCED | PPD_PROFILE_PERFORMANCE, nullptr);
     auto self = PPD_DRIVER_UKE_CPUFREQ(object);
-    const char *subsystems[] = {"devfreq", "drm", nullptr};
+    const char *subsystems[] = {"devfreq", "drm", "platform", nullptr};
     self->client = g_udev_client_new(subsystems);
     g_signal_connect(self->client, "uevent", G_CALLBACK(+[](GUdevClient *, const char *, GUdevDevice *, gpointer data) {
         auto pending = PPD_DRIVER_UKE_CPUFREQ(data);
-        if (pending->awaiting_gpu) g_signal_emit_by_name(pending, "probe-request", 0);
+        if (pending->awaiting_provider || native_handoff() != NativeHandoff::legacy)
+            g_signal_emit_by_name(pending, "probe-request", 0);
     }), self);
     return object;
 }

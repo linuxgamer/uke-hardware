@@ -40,4 +40,15 @@ busctl --address="$DBUS_SYSTEM_BUS_ADDRESS" --auto-start=no get-property org.fre
 grep -Fx 'b true' "$work/ac-online"
 grep -Fx 'u 2' "$work/display-state"
 grep -E '^u [345]$' "$work/warning"
-printf '%s\n' 'Isolated UPower AC-online/discharging/low-battery state passed; real desktop actions and physical charging remain untested'
+for item in WIRELESS0:false WIRELESS1:true WIRELESS_INVALID:false WIRELESS_MISSING:false; do
+    name=${item%:*}; expected=${item#*:}
+    busctl --address="$DBUS_SYSTEM_BUS_ADDRESS" --auto-start=no get-property org.freedesktop.UPower \
+        "/org/freedesktop/UPower/devices/line_power_$name" org.freedesktop.UPower.Device Online > "$work/$name"
+    grep -Fx "b $expected" "$work/$name"
+done
+if grep -F 'did not recognize type Wireless' "$work/daemon.log"; then
+    echo 'Standard Wireless type was not recognized' >&2
+    exit 1
+fi
+grep -F 'did not recognize type FixtureUnknown' "$work/daemon.log"
+printf '%s\n' 'Isolated UPower AC/low-battery and Wireless online/offline/malformed states passed; unknown diagnostics retained; physical charging untested'

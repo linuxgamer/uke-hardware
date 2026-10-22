@@ -67,8 +67,15 @@ allowance can extend the collection deadline. Signal handling, blocked reads,
 resource limits and polling overhead still require the deferred host tests.
 CLI watch is limited to 120 observations, five to sixty seconds apart (default
 thirty) and four MiB of
-output. The daemon keeps one bounded snapshot in memory and starts another
-collection only after the previous one finishes; it writes no measurement log.
+output. The D-Bus service collects only after a `GetSnapshot` request, reuses
+its snapshot for thirty seconds and permits one collector at a time. A first
+request may return `collecting`; the caller can request the completed snapshot
+later. `GetCapabilities` performs no collection. There is no background sampling
+without requests, and the service exits after sixty seconds without D-Bus
+activity once its current collection finishes. A later request uses the existing
+D-Bus activation. The default systemd preset remains disabled. Standard desktop
+battery reporting continues through UPower; the diagnostic service adds no
+charging policy and writes no measurement log.
 
 `external_power_with_negative_battery_current` represents two observed standard
 fields. It is not a diagnosis of insufficient adapter power. Reasons such as

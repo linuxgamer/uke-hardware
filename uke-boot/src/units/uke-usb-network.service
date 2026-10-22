@@ -1,7 +1,7 @@
 [Unit]
 Description=Uke explicit USB ACM and Ethernet debug transport
 Requires=sys-kernel-config.mount
-Wants=NetworkManager.service sshd.socket
+Wants=NetworkManager.service
 After=sys-kernel-config.mount NetworkManager.service
 Conflicts=uke-cdc-acm.service uke-cdc-shell.service
 OnFailure=uke-cdc-acm.service uke-cdc-shell.service

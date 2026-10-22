@@ -13,4 +13,9 @@ pkg-config --atleast-version=257 libsystemd
     "$root/src/battery/record.cpp" $(pkg-config --cflags --libs libsystemd libcrypto) -o "$work/profile"
 mkdir "$work/records"
 "$work/profile" "$root/manifests/control-profile.json" "$work/records"
+"${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -Werror \
+    "$root/tests/protection-log.cpp" "$root/src/battery/control.cpp" \
+    "$root/src/battery/control-profile.cpp" "$root/src/battery/record.cpp" \
+    $(pkg-config --cflags --libs libsystemd libcrypto) -o "$work/protection-log"
+"$work/protection-log"
 echo 'Synthetic control permission, readback, expiry and current-policy fixtures passed; no physical qualification'

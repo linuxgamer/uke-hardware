@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-10-18",
+  "date": "2026-10-21",
   "kind": "source_package_candidate",
   "fedora_dist_git": "https://src.fedoraproject.org/rpms/upower.git",
   "fedora_commit": "f47a2ad5d41e310ae0fb6e23ddcce78ae4ae9c87",
@@ -11,15 +11,18 @@
   "archive_sha256": "c465a1c7fc05d00ac2bc7321c19b9b7e479410d8392bd7eb3e714275729629fd",
   "upstream_file_sha256": {
     "src/up-device-battery.c": "c9efe37e688721f985d768f6655b3ab0b48edc8f689407e2c33ef7d82b7801aa",
-    "src/linux/up-device-supply-battery.c": "fbea1de289b8262fda8dd95320e36230561677351f35b6e380d32a792a14ee2f"
+    "src/linux/up-device-supply-battery.c": "fbea1de289b8262fda8dd95320e36230561677351f35b6e380d32a792a14ee2f",
+    "src/linux/up-device-supply.c": "ae52bdcfea616e1d8f9bb57695d767683a9b9f53b0ac662a598c83d9e2929a93"
   },
-  "candidate_nevra": "upower-1.91.5-2.uke4.fc46.aarch64",
-  "reported_installed_nevra": "upower-1.91.5-1.fc46.aarch64",
-  "reported_by": "concurrent VRR validation session, 18 October 2026",
-  "package_built": true,
+  "candidate_nevra": "uke-upower-1.91.5-8.fc46.aarch64",
+  "reported_installed_nevra": "uke-upower-1.91.5-7.fc46.aarch64",
+  "reported_by": "Fedora Rawhide AArch64 DNF transaction 14, 21 October 2026",
+  "package_built": false,
   "package_installed": false,
   "tests_executed": true,
   "python_host_only": "Upstream Meson >= 0.60.0 and the unchanged upstream 1.91.5 unittest discovery helper; no practical non-Python upstream build route. No project Python code or installed Python tests.",
   "original_kde_unchanged": true,
-  "battery_setters_enabled_by_this_overlay": false
+  "battery_setters_enabled_by_this_overlay": false,
+  "supersedes_candidate_nevra": "upower-1.91.5-2.uke4.fc46.aarch64",
+  "canonical_source_lock": "uke-desktop-packaging/manifests/native-runtime.json"
 }

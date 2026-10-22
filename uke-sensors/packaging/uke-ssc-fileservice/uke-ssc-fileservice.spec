@@ -1,6 +1,6 @@
 Name: uke-ssc-fileservice
 Version: 2026.09.21
-Release: 8%{?dist}
+Release: 12%{?dist}
 Summary: Native Uke SSC file service with a disposable registry
 License: GPL-3.0-or-later
 URL: https://github.com/linux-msm/hexagonrpc
@@ -31,6 +31,7 @@ Requires: /usr/share/uke-sensors/sns_reg.conf
 Requires: /usr/lib/firmware/qcom/uke/sensors/sns_tppe.so
 Requires: /usr/bin/findmnt
 Requires: /usr/bin/grep
+Requires: /usr/bin/flock
 %{?systemd_requires}
 
 %description
@@ -91,6 +92,16 @@ install -Dm644 %{SOURCE7} %{buildroot}%{_udevrulesdir}/70-uke-ssc.rules
 %postun
 %systemd_postun uke-ssc-cache.service uke-ssc-root.service uke-ssc-sensors.service
 
+%transfiletriggerin -- /usr/lib/firmware/qcom/uke/sensors /usr/share/uke-sensors /usr/libexec/uke-ssc-cache
+if [ -d /run/systemd/system ] && [ -r /sys/firmware/devicetree/base/compatible ] &&
+   grep -zFxq xiaomi,uke /sys/firmware/devicetree/base/compatible &&
+   systemctl -q is-active uke-ssc-root.service; then
+    systemctl daemon-reload
+    if ! systemctl try-restart uke-ssc-cache.service uke-ssc-root.service uke-ssc-sensors.service iio-sensor-proxy.service; then
+        echo 'Uke SSC cache refresh refused; inspect the service result before accepting the new sensor runtime.' >&2
+    fi
+fi
+
 %files
 %license COPYING
 /usr/libexec/uke-hexagonrpcd
@@ -102,6 +113,10 @@ install -Dm644 %{SOURCE7} %{buildroot}%{_udevrulesdir}/70-uke-ssc.rules
 %{_udevrulesdir}/70-uke-ssc.rules
 
 %changelog
+* Wed Oct 21 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 2026.09.21-12
+- Refresh immutable packaged inputs atomically while preserving the RAM registry.
+- Exclude active readers with shared lifetime locks and restart in dependency order.
+
 * Sat Oct 17 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 2026.09.21-8
 - Select dual-light acquisition only for the exact Uke device-tree identity.
 

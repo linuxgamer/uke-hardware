@@ -1,6 +1,6 @@
 {
   "device": "uke",
-  "status": "bounded laboratory trial; permanent startup not admitted",
+  "status": "experimental packaged service; full lifecycle qualification incomplete",
   "processor": {
     "repository": "https://github.com/ianchb/xiaomi-sheng-thp",
     "commit": "34046210932d654a4c0df0121ecc31c008f8148c",
@@ -8,7 +8,13 @@
     "class": "adjacent-device host-touch algorithm; Uke calibration loaded separately",
     "files": ["src/nvt_touch_core.cpp", "src/nvt_touch_core.hpp"],
     "patch": "patches/nt36532-thp-runtime-geometry.patch",
-    "patch_sha256": "9f2a0b03e9ca59df095a36e3c314d16e67273735328348f1213848b7988f40c7"
+    "patch_sha256": "9f2a0b03e9ca59df095a36e3c314d16e67273735328348f1213848b7988f40c7",
+    "bounded_assignment_patch": "patches/nt36532-thp-bounded-assignment.patch",
+    "bounded_assignment_patch_sha256": "8073e96d009d74a8b9586586479f8092ac8ac1321d7ef5e1acdc845d091030b2",
+    "tracking_id_patch": "patches/nt36532-thp-tracking-id-wrap.patch",
+    "tracking_id_patch_sha256": "c3bdd3150e23fee5d987a77b1a2e1ffa0566eb0bb3d68537aa00e0fdec1c28db",
+    "lifetime_counter_patch": "patches/nt36532-thp-lifetime-counters.patch",
+    "lifetime_counter_patch_sha256": "7d47078ea987e2a2784c995ba65fba5e4ecf7eb1c66daca2d6836a6264f5ee0e"
   },
   "input": {
     "name": "Novatek NT36532 Uke Touchscreen",

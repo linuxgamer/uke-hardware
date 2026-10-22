@@ -1,6 +1,6 @@
 %global debug_package %{nil}
-Name: plymouth-uke
-Version: 1.0.0
+Name: uke-plymonth
+Version: 1.0.2
 Release: 1%{?dist}
 Summary: Optional Senemos Uke Plymouth theme
 License: MIT
@@ -9,6 +9,9 @@ Source0: %{name}-%{version}.tar.xz
 BuildArch: noarch
 BuildRequires: tar xz
 Requires: plymouth plymouth-plugin-script
+Provides: plymouth-uke = 1.0.2-1
+Obsoletes: plymouth-uke < 1.0.2-1
+Conflicts: plymouth-uke
 %description
 A renderer-size-aware text theme for Uke development images. It installs
 optional theme data only; it does not set the default theme, regenerate an
@@ -28,5 +31,8 @@ test -s %{buildroot}%{_datadir}/plymouth/themes/senemos-uke/plymouth-uke.script
 %{_datadir}/plymouth/themes/senemos-uke/
 
 %changelog
+* Tue Oct 20 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.0.2-1
+- Rename the optional theme to uke-plymonth with a versioned upgrade path.
+
 * Mon Oct 05 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 1.0.0-1
 - Build an independently scoped Uke development package with explicit readiness.

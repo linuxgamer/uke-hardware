@@ -40,3 +40,9 @@ namespace and capability restrictions exposed the persist block node to
 commands were not run and no address changed. This supersedes only the
 namespace-smoke gap above; SDK fixtures, package checks, full helper startup
 and physical factory-address equality remain separate.
+# Package ownership, 22 October 2026
+
+Boot integration `1.5.0` builds this unchanged native bridge and replaces the
+separate Bluetooth RPM. Source, tests and license remain here. Its source recipe
+reuses the family's state-preservation fragment; enablement is not inferred from
+an installed package. The old standalone spec is retained as historical source.

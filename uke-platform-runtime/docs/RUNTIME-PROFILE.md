@@ -55,6 +55,17 @@ lease and a checksum do not qualify a measurement by themselves.
 
 ## Recovery and controls
 
+### 20 October calculation contract extension
+
+The [engineering contract](BATTERY-ENGINEERING.md) adds an independently qualified
+`measurements.voltage` flag. Missing means false: an older current/energy lease
+does not silently qualify terminal voltage or a V/I-based discharge forecast.
+Existing schema-1 profiles remain readable. Optional `electrical_basis` and
+`charge_curve` objects require the same reviewed identity/evidence lease; both
+ship null. They add calculations only and cannot enable a control, effective
+target readback or a physical protection. Unknown keys and invalid quantities
+are rejected as before.
+
 When the first diagnostic record reports desynchronization, suspension, removal,
 service-down or unavailable diagnostics, the collector performs no property GETs.
 It returns `transport_quiesced`, the recovery reason, `automatic_reset:false`

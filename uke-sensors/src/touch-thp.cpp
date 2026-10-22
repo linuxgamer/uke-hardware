@@ -8,11 +8,59 @@
 #include <filesystem>
 #include <linux/gpio.h>
 #include <linux/uinput.h>
+#include <memory>
 #include <poll.h>
+#include <string_view>
 #include <systemd/sd-daemon.h>
+#include <systemd/sd-device.h>
+#include <systemd/sd-event.h>
 
 static volatile std::sig_atomic_t running=1;
 static void stop_touch(int) { running=0; }
+static std::optional<bool> touch_usb_online(const std::filesystem::path &path=
+        "/sys/class/power_supply/qcom-battmgr-usb/online") {
+    std::ifstream file(path,std::ios::binary);
+    char bytes[3]{};file.read(bytes,sizeof(bytes));
+    if(file.bad() || file.gcount()!=2 || bytes[1]!='\n' || (bytes[0]!='0' && bytes[0]!='1'))
+        return std::nullopt;
+    return bytes[0]=='1';
+}
+struct TouchPowerState {
+    std::optional<bool> attempted;
+    template<class Apply> void update(std::optional<bool> supplied,Apply apply) {
+        if(!supplied || supplied==attempted)return;
+        attempted=supplied; // Retry only after a source change or firmware reload.
+        apply(*supplied);
+    }
+};
+struct TouchPowerMonitor {
+    std::unique_ptr<sd_device_monitor,decltype(&sd_device_monitor_unref)> monitor{nullptr,sd_device_monitor_unref};
+    std::unique_ptr<sd_event,decltype(&sd_event_unref)> event{nullptr,sd_event_unref};
+    bool dirty=true;
+    TouchPowerState state;
+    TouchPowerMonitor() {
+        sd_device_monitor *m=nullptr;
+        require(sd_device_monitor_new(&m)>=0,"Touch power monitor unavailable");monitor.reset(m);
+        sd_event *e=nullptr;
+        require(sd_event_new(&e)>=0,"Touch power event loop unavailable");event.reset(e);
+        require(sd_device_monitor_filter_add_match_subsystem_devtype(m,"power_supply",nullptr)>=0 &&
+                sd_device_monitor_attach_event(m,e)>=0 &&
+                sd_device_monitor_start(m,[](sd_device_monitor *,sd_device *device,void *user) {
+                    const char *name=nullptr;
+                    if(sd_device_get_sysname(device,&name)>=0 && std::string_view(name)=="qcom-battmgr-usb")
+                        static_cast<TouchPowerMonitor *>(user)->dirty=true;
+                    return 0;
+                },this)>=0,"Touch power notification setup failed");
+    }
+    int fd() const {return sd_event_get_fd(event.get());}
+    void dispatch() {
+        for(unsigned count=0;count<16;count++) {
+            const int result=sd_event_run(event.get(),0);
+            require(result>=0,"Touch power notification dispatch failed");
+            if(!result)break;
+        }
+    }
+};
 struct TouchPanelState {
     std::uint64_t generation{};
     bool ready{};
@@ -33,29 +81,34 @@ static std::filesystem::path touch_panel_provider(const std::filesystem::path &r
     }
     return selected;
 }
-static TouchPanelState touch_panel_state(const std::filesystem::path &path) {
-    std::ifstream file(path);
-    std::string generation,ready,extra;
-    require(bool(file>>generation>>ready) && !(file>>extra) && generation.size()<=20 &&
-            (ready=="0" || ready=="1"),"Invalid O82 panel reset state");
+static TouchPanelState touch_panel_state(int descriptor) {
+    char bytes[64];ssize_t size;
+    do {size=pread(descriptor,bytes,sizeof(bytes),0);}while(size<0 && errno==EINTR);
+    require(size>0 && size<ssize_t(sizeof(bytes)),"O82 panel event read failed");
     std::uint64_t value=0;
-    const auto parsed=std::from_chars(generation.data(),generation.data()+generation.size(),value);
-    require(parsed.ec==std::errc{} && parsed.ptr==generation.data()+generation.size() &&
-            value<=UINT64_MAX/2,"Invalid O82 panel generation");
-    return {value,ready=="1"};
+    const auto parsed=std::from_chars(bytes,bytes+size,value);
+    require(parsed.ec==std::errc{} && parsed.ptr>bytes && parsed.ptr-bytes<=20 &&
+            bytes+size-parsed.ptr==3 && parsed.ptr[0]==' ' &&
+            (parsed.ptr[1]=='0' || parsed.ptr[1]=='1') && parsed.ptr[2]=='\n' &&
+            value<=UINT64_MAX/2,"Invalid O82 panel reset state");
+    return {value,parsed.ptr[1]=='1'};
 }
 struct TouchPanelGuard {
-    TouchPanelGuard(const std::filesystem::path &path,TouchPanelState expected) {
-        if(path.empty()) return;
+    TouchPanelGuard(int descriptor,TouchPanelState expected) {
+        if(descriptor<0) return;
         require(expected.ready && !touch_transfer_guard,"Panel is not ready for touch initialization");
-        if(touch_panel_state(path)!=expected) throw TouchPanelTransition();
-        touch_transfer_guard=[path,expected] {
-            if(touch_panel_state(path)!=expected) throw TouchPanelTransition();
+        if(touch_panel_state(descriptor)!=expected) throw TouchPanelTransition();
+        touch_transfer_guard=[descriptor,expected] {
+            if(touch_panel_state(descriptor)!=expected) throw TouchPanelTransition();
         };
     }
     ~TouchPanelGuard() { touch_transfer_guard={}; }
 };
-static void touch_start_normal(int fd,const Bytes &image) {
+static void touch_start_normal(int fd,const Bytes &image,bool watchdog_idle=false) {
+    if(watchdog_idle) {
+        // Exact Uke OEM watchdog path: leave the FE reset loop before reloading.
+        normal_write(fd,0x1fb43e,Bytes{0xaa});pause_ms(15);
+    }
     bootstrap_touch_chip(fd);
     load_normal(fd,image); normal_scan_ready(fd);
     const auto info=read<16>(fd,firmware_address(0));
@@ -141,28 +194,32 @@ struct TouchRecovery {
     std::uint64_t generation{};
     unsigned failures{};
     std::chrono::steady_clock::time_point next{};
+    bool firmware_reset{};
+    std::uint8_t watchdog_byte{};
 };
 template<class Release,class Reset,class Drain,class Reload>
-static bool recover_touch_panel(const std::filesystem::path &path,TouchPanelState &admitted,
+static bool recover_touch_panel(int descriptor,TouchPanelState &admitted,
                                 TouchRecovery &recovery,Release release,Reset reset,Drain drain,
                                 Reload reload,std::chrono::steady_clock::time_point now) {
-    const auto observed=touch_panel_state(path);
-    if(observed.ready && observed==admitted) return true;
+    const auto observed=touch_panel_state(descriptor);
+    if(observed.ready && observed==admitted && !recovery.firmware_reset) return true;
     release();
     if(observed.generation!=recovery.generation) {
         recovery={observed.generation,0,{}};
         reset();
     }
     drain();
-    if(!touch_reload_required(admitted,observed) || recovery.failures>=3 || now<recovery.next) return false;
+    if(!observed.ready || (!touch_reload_required(admitted,observed) && !recovery.firmware_reset) ||
+       recovery.failures>=3 || now<recovery.next) return false;
     try {
-        TouchPanelGuard guard(path,observed);
-        reload();
+        TouchPanelGuard guard(descriptor,observed);
+        reload(recovery.firmware_reset && recovery.watchdog_byte==0xfe);
         touch_transfer_guard();
         drain();
         admitted=observed;recovery.failures=0;
-        std::cout<<"Touch recovered after panel reset generation "<<observed.generation
+        std::cout<<"Touch recovered after "<<(recovery.firmware_reset ? "firmware watchdog; panel generation " : "panel reset generation ")<<observed.generation
                  <<"; input device retained"<<std::endl;
+        recovery.firmware_reset=false;
         return true;
     } catch(const TouchPanelTransition &) {
         return false;
@@ -170,6 +227,8 @@ static bool recover_touch_panel(const std::filesystem::path &path,TouchPanelStat
         std::cerr<<"Touch generation "<<observed.generation<<" recovery failed: "<<error.what()<<std::endl;
         recovery.failures++;
         recovery.next=now+std::chrono::seconds(1);
+        require(!recovery.firmware_reset || recovery.failures<3,
+                "Touch firmware watchdog recovery exhausted; restarting service");
         return false;
     }
 }
@@ -201,6 +260,7 @@ static void input_setup(int fd,const nvt::Geometry &geometry) {
             ioctl(fd,UI_DEV_CREATE)==0,"Touch input registration failed");
 }
 static void input_report(int fd,const std::vector<nvt::Slot> &slots,std::array<int,nvt::kFingerSlots> &ids,const nvt::Geometry &geometry) {
+    if(slots.empty() && std::all_of(ids.begin(),ids.end(),[](int id){return id<0;}))return;
     std::array<bool,nvt::kFingerSlots> seen{};
     for(const auto &slot:slots) {
         require(slot.number>=0 && slot.number<int(ids.size()) && !seen[slot.number],"Invalid or duplicate touch slot");
@@ -305,7 +365,11 @@ int main(int argc,char **argv) {
             for(unsigned attempt=0;attempt<100;attempt++) {
                 panel_provider=touch_panel_provider();
                 if(!panel_provider.empty()) {
-                    admitted_panel=touch_panel_state(panel_provider);
+                    const int initial=open(panel_provider.c_str(),O_RDONLY|O_CLOEXEC);
+                    require(initial>=0,"O82 panel event open failed");
+                    try {admitted_panel=touch_panel_state(initial);}
+                    catch(...) {close(initial);throw;}
+                    close(initial);
                     if(admitted_panel.ready) break;
                 }
                 pause_ms(100);
@@ -315,14 +379,14 @@ int main(int argc,char **argv) {
             require(panel_event>=0,"O82 panel event provider unavailable");
         }
         if(probe_rates) {
-            TouchPanelGuard guard(panel_provider,admitted_panel);
+            TouchPanelGuard guard(panel_event,admitted_panel);
             require(nt36532(read<6>(spi,0x1fb104)) && !(read<1>(spi,0x1fb12c)[0]&1),"Foreign chip/topology");
             touch_probe_game_rates(spi);
             close(panel_event); close(spi);
             return 0;
         }
         if(daemon) {
-            TouchPanelGuard guard(panel_provider,admitted_panel);
+            TouchPanelGuard guard(panel_event,admitted_panel);
             touch_start_normal(spi,image);
             if(touch_transfer_guard)touch_transfer_guard();
         } else {
@@ -338,6 +402,8 @@ int main(int argc,char **argv) {
             require(operating_mode==1 && stylus_only==0 && single_step==0,
                 "Touch operating mode unavailable");
         }
+        std::optional<TouchPowerMonitor> power;
+        if(daemon)power.emplace();
         irq=touch_irq(controller);
         input=open("/dev/uinput",O_WRONLY|O_CLOEXEC); require(input>=0,"Kernel uinput is unavailable");
         input_setup(input,geometry);
@@ -352,14 +418,17 @@ int main(int argc,char **argv) {
         unsigned frames=0,rejected=0,contacts=0,coalesced_edges=0;
         std::size_t previous_contacts=0;
         TouchRecovery recovery{admitted_panel.generation,0,{}};
+        uke_touch::Watchdog watchdog;
         while(running && (daemon || std::chrono::steady_clock::now()<deadline)) {
+            if(power)power->dispatch();
             if(!panel_provider.empty()) {
-                char acknowledged[64];
-                require(pread(panel_event,acknowledged,sizeof(acknowledged),0)>0,"O82 panel event read failed");
-                if(!recover_touch_panel(panel_provider,admitted_panel,recovery,
+                if(!recover_touch_panel(panel_event,admitted_panel,recovery,
                     [&]{input_report(input,{},ids,geometry);previous_contacts=0;},
-                    [&]{core.reset();core.process(reference_frame->matrix,reference_frame->counter,reference_frame->scan_mode);},
-                    [&]{discard_touch_irqs(irq);},[&]{touch_start_normal(spi,image);},
+                    [&]{core.reset();core.process(reference_frame->matrix,reference_frame->counter,reference_frame->scan_mode);watchdog={};},
+                    [&]{discard_touch_irqs(irq);},[&](bool idle){
+                        touch_start_normal(spi,image,idle);
+                        if(power){power->state.attempted.reset();power->dirty=true;}
+                    },
                     std::chrono::steady_clock::now())) {
                     // Retry backoff only bounds failed downloads; panel readiness wakes us immediately.
                     pollfd changed{panel_event,POLLPRI|POLLERR,0};
@@ -370,8 +439,23 @@ int main(int argc,char **argv) {
                     continue;
                 }
             }
-            pollfd ready[]{{irq,POLLIN,0},{panel_event,POLLPRI|POLLERR,0}};
-            const int status=poll(ready,2,100);
+            if(power && power->dirty && !previous_contacts) {
+                power->dirty=false;
+                try {
+                    TouchPanelGuard guard(panel_event,admitted_panel);
+                    power->state.update(touch_usb_online(),[&](bool supplied) {
+                        touch_charger_mode(spi,supplied);
+                        std::cout<<"Touch charger-noise filter: external-power="<<supplied<<std::endl;
+                    });
+                } catch(const TouchPanelTransition &) {
+                    power->state.attempted.reset();power->dirty=true;continue;
+                } catch(const std::exception &error) {
+                    std::cerr<<"Touch charger-noise filter not applied: "<<error.what()<<std::endl;
+                }
+            }
+            pollfd ready[]{{irq,POLLIN,0},{panel_event,POLLPRI|POLLERR,0},
+                {power?power->fd():-1,POLLIN,0}};
+            const int status=poll(ready,3,100);
             if(status<0 && !running) break;
             require(status>=0,"Touch IRQ wait failed");
             if(!status) {
@@ -379,14 +463,15 @@ int main(int argc,char **argv) {
                 continue;
             }
             require(!(ready[0].revents&(POLLERR|POLLHUP|POLLNVAL)) &&
-                    !(ready[1].revents&POLLNVAL),"Touch event provider failed");
+                    !(ready[1].revents&POLLNVAL) &&
+                    !(ready[2].revents&(POLLERR|POLLHUP|POLLNVAL)),"Touch event provider failed");
             if(ready[1].revents || !(ready[0].revents&POLLIN))continue;
             coalesced_edges+=consume_touch_irq(irq)-1;
             std::array<std::uint8_t,5434> tx{},rx{};
             try {
                 // Recheck after the IRQ wait and before each SPI transfer. A panel reset
                 // invalidates the whole matrix; the next iteration releases its contacts.
-                TouchPanelGuard guard(panel_provider,admitted_panel);
+                TouchPanelGuard guard(panel_event,admitted_panel);
                 auto page_select=select_page(0x11c400); transfer(spi,page_select.data(),nullptr,page_select.size());
                 transfer(spi,tx.data(),rx.data(),rx.size(),19200000);
                 if(touch_transfer_guard)touch_transfer_guard();
@@ -394,7 +479,17 @@ int main(int argc,char **argv) {
                 input_report(input,{},ids,geometry);previous_contacts=0;
                 discard_touch_irqs(irq);continue;
             }
-            const auto frame=uke_touch::decode(std::span(rx).subspan(2));
+            const auto packet=std::span(rx).subspan(2);
+            if(const auto fault=watchdog.observe(packet)) {
+                input_report(input,{},ids,geometry);previous_contacts=0;
+                core.reset();core.process(reference_frame->matrix,reference_frame->counter,reference_frame->scan_mode);
+                recovery.firmware_reset=true;recovery.watchdog_byte=*fault;
+                recovery.failures=0;recovery.next={};
+                std::cerr<<"Touch firmware watchdog 0x"<<std::hex<<unsigned(*fault)<<std::dec
+                         <<" after 11 packets; recovering without replacing input device"<<std::endl;
+                continue;
+            }
+            const auto frame=uke_touch::decode(packet);
             const auto now=std::chrono::steady_clock::now();
             if(frame) {
                 last_valid=now; frames++;

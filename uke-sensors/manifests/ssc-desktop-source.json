@@ -14,14 +14,15 @@
     "python_runtime": false,
     "cli_sha256": "905007dd7d2642428d3a297019807e2b5bc4f53f4dfffe1f1b8a265c745323f2",
     "next_candidate": {
-      "release": "0.4.4-5",
+      "release": "0.4.4-6",
       "patches": [
         "0001-optional-python-mocks.patch",
         "0002-report-qrtr-error.patch",
         "0003-gyroscope-cli-units.patch",
         "0004-light-data-type-and-validity.patch",
         "0005-preserve-nonzero-mount-matrix.patch",
-        "0006-bounded-proximity-unpack-context.patch"
+        "0006-bounded-proximity-unpack-context.patch",
+        "0007-reject-invalid-proximity-values.patch"
       ],
       "retained_fix": "8766d4e3b74602a919104da232d53851ee76c593",
       "hardware_result": "not established by package checks"

@@ -48,6 +48,25 @@ int main() {
         put(root/"sys/class/drm/card1-DP-1/status","connected\n");
         put(root/"sys/class/drm/card1-DP-1/edid","DO_NOT_COLLECT_EDID");
         put(root/"sys/class/drm/card1-DP-1/modes","1920x1080\n");
+        put(root/"sys/bus/typec/devices/port0.0/svid","ff01\n");
+        put(root/"sys/bus/typec/devices/port0.0/mode","1\n");
+        put(root/"sys/bus/typec/devices/port0.0/vdo","0x00001c46\n");
+        put(root/"sys/bus/typec/devices/port0.0/active","no\n");
+        const auto provider=[&](const fs::path& directory,const std::string& name,const std::string& driver) {
+            const auto object=root/directory/"devices"/name;
+            fs::create_directories(object);fs::create_directories(root/directory/"drivers"/driver);
+            fs::create_directory_symlink("../../drivers/"+driver,object/"driver");
+            fs::create_directory_symlink("../../devices/"+name,root/directory/"drivers"/driver/name);
+            return object;
+        };
+        const auto ucsi=provider("sys/bus/auxiliary","pmic_glink.ucsi.0","ucsi_glink.pmic_glink_ucsi");
+        put(ucsi/"uke_transport_state","version=1 online=1 quarantined=1 result_errno=-110\n");
+        const auto phy=provider("sys/bus/platform","88e8000.phy","qcom-qmp-combo-phy");
+        put(phy/"uke_route_state","version=1 dp_powered=0 errno=-5\n");
+        const auto aux=provider("sys/bus/i2c","0-000e","wcd939x-uke-typec");
+        put(aux/"route_state","version=1 applied=0 errno=-5\n");
+        const auto foreign=provider("sys/bus/auxiliary","foreign","unrelated-driver");
+        assert(mkfifo((foreign/"uke_transport_state").c_str(),0600)==0);
         put(root/"sys/class/udc/test/function","a\"b\\c\n");
         fs::create_directories(root/"sys/class/power_supply");
         // A FIFO would block if an accidental firmware-backed power read was added.
@@ -61,6 +80,16 @@ int main() {
         assert(data.find("DO_NOT_COLLECT")==std::string::npos);
         assert(data.find("\"name\":\"escape\"")==std::string::npos);
         assert(data.find("\"power_supply_reads\":false")!=std::string::npos);
+        assert(data.find("\"svid\":\"ff01\"")!=std::string::npos);
+        assert(data.find("\"active\":\"no\"")!=std::string::npos);
+        assert(data.find("quarantined=1 result_errno=-110")!=std::string::npos);
+        assert(data.find("dp_powered=0 errno=-5")!=std::string::npos);
+        assert(data.find("applied=0 errno=-5")!=std::string::npos);
+        assert(data.find("\"name\":\"foreign\"")==std::string::npos);
+        assert(data.find("\"link_training_verified\":null")!=std::string::npos);
+        assert(data.find("\"physical_image_verified\":null")!=std::string::npos);
+        fs::remove(ucsi/"uke_transport_state");
+        assert(uke::usb::snapshot(root).find("\"uke_transport_state\":null")!=std::string::npos);
         fs::remove(root/"sys/bus/usb/devices/1-1/speed");
         assert(uke::usb::snapshot(root).find("\"speed\":null")!=std::string::npos);
         fs::remove_all(root);

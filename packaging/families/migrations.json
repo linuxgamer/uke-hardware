@@ -1,0 +1,20 @@
+[
+  {
+    "family": "uke-sensors",
+    "old": "iio-sensor-proxy",
+    "new": "uke-iio-sensor-proxy",
+    "unit": "iio-sensor-proxy.service"
+  },
+  {
+    "family": "uke-power",
+    "old": "upower",
+    "new": "uke-upower",
+    "unit": "upower.service"
+  },
+  {
+    "family": "uke-additional",
+    "old": "accountsservice",
+    "new": "uke-accountsservice",
+    "unit": "accounts-daemon.service"
+  }
+]

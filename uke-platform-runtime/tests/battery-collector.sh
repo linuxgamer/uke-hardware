@@ -20,6 +20,7 @@ printf '1 1 1 1 1 0 0 0 0 0 100 99\n' > "$sys/devices/charger/uke_battmgr_state"
 printf 'Discharging\n' > "$sys/class/power_supply/qcom-battmgr-bat/status"
 printf 'Good\n' > "$sys/class/power_supply/qcom-battmgr-bat/health"
 printf '%s\n' -500000 > "$sys/class/power_supply/qcom-battmgr-bat/current_now"
+printf '%s\n' 4000000 > "$sys/class/power_supply/qcom-battmgr-bat/voltage_now"
 printf '%s\n' -2000000 > "$sys/class/power_supply/qcom-battmgr-bat/power_now"
 printf '0\n' > "$sys/class/power_supply/qcom-battmgr-bat/cycle_count"
 printf '1\n' > "$sys/class/power_supply/qcom-battmgr-usb/online"
@@ -36,6 +37,10 @@ jq -e '.schema_version == 1 and .origin == "fixture" and .provider_verified and 
     and .health_provenance.reported_health.reported == "Good" and (.health_provenance.reported_health.physical_safety_qualified | not)
     and .health_provenance.vendor_soh_percent.reported == null and (.health_provenance.observed_efc_is_lifetime_cycles | not)
     and .observed_efc == null and .forecast.time_to_full_seconds == null and .forecast.reason == "profile_unqualified"
+    and .engineering.reported_terminal_power_uw == -2000000 and (.engineering.power_inputs_qualified | not)
+    and .engineering.signed_c_rate_per_hour == null and .engineering.nominal_full_energy_uwh == null
+    and (.engineering.cell_topology.qualified | not) and .engineering.cell_topology.series_cells == null
+    and .engineering.remaining_life_seconds == null and .engineering.remaining_life_reason == "aging_model_unqualified"
     and .efc_coverage.checkpoint == "disabled_unqualified" and .capabilities.read_only and (.capabilities.charge_threshold | not)' "$work/snapshot.json" >/dev/null
 jq -e '.fields["battery.temp"].value == null and .safety == "unknown_safety_state"' "$work/snapshot.json" >/dev/null
 for value in -1 2147483648 missing; do

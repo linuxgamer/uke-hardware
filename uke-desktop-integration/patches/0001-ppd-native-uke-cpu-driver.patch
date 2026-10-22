@@ -27,10 +27,10 @@
  
  typedef GType (*GTypeGetFunc) (void);
 @@ -153,6 +154,7 @@
++  ppd_driver_uke_cpufreq_get_type,
    ppd_driver_platform_profile_get_type,
    ppd_driver_intel_pstate_get_type,
    ppd_driver_amd_pstate_get_type,
-+  ppd_driver_uke_cpufreq_get_type,
  
    /* Generic profile driver */
    ppd_driver_placeholder_get_type,

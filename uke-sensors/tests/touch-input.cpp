@@ -15,6 +15,30 @@ int main() {
         std::ofstream file(path,std::ios::binary);
         file.write(reinterpret_cast<const char *>(data.data()),data.size()); assert(file);
     };
+    assert(!touch_usb_online(root/"missing"));
+    for(const auto *invalid:{"", "2\n", "1", "0\nextra", "bad"}) {
+        write_file(root/"online",std::string(invalid));assert(!touch_usb_online(root/"online"));
+    }
+    for(bool online:{false,true}) {
+        write_file(root/"online",std::string(online?"1\n":"0\n"));
+        assert(touch_usb_online(root/"online")==online);
+    }
+    write_file(root/"config.ini",std::string(36229,'x'));
+    bool oversized_config=false;
+    try {touch_geometry((root/"config.ini").c_str());}
+    catch(const std::exception &error) {oversized_config=std::string(error.what())=="Unqualified O82 configuration size";}
+    assert(oversized_config);
+    TouchPowerState power;unsigned applied=0;
+    const auto apply=[&](bool){applied++;};
+    power.update(std::nullopt,apply);assert(!applied);
+    power.update(true,apply);power.update(true,apply);assert(applied==1);
+    power.update(false,apply);assert(applied==2);
+    power.attempted.reset();power.update(false,apply);assert(applied==3);
+    bool failed=false;
+    try {power.update(true,[&](bool){throw std::runtime_error("injected charger-noise failure");});}
+    catch(const std::exception &) {failed=true;}
+    assert(failed);power.update(true,apply);assert(applied==3);
+    power.attempted.reset();power.update(true,apply);assert(applied==4);
     for(const auto *size:{"4096", "5433", "bad", ""}) {
         write_file(root/"bufsiz",std::string(size));
         bool rejected=false;
@@ -51,10 +75,15 @@ int main() {
     write_file(panel/"of_node/compatible",panel_name);
     write_file(state,std::string("7 1\n"));
     assert(touch_panel_provider(panels)==state);
-    assert((touch_panel_state(state)==TouchPanelState{7,true}));
-    for(const auto *invalid:{"-1 1", "1 2", "1 1 trailing", "18446744073709551615 1", "1", "x 1"}) {
+    const int state_fd=open(state.c_str(),O_RDONLY|O_CLOEXEC);assert(state_fd>=0);
+    assert(lseek(state_fd,1,SEEK_SET)==1);
+    assert((touch_panel_state(state_fd)==TouchPanelState{7,true}));
+    assert(lseek(state_fd,0,SEEK_CUR)==1); // Positional reads do not consume the provider.
+    for(const auto &invalid:{std::string("-1 1\n"),std::string("1 2\n"),std::string("1 1 trailing\n"),
+            std::string("18446744073709551615 1\n"),std::string("1"),std::string("x 1\n"),
+            std::string(),std::string(64,'1'),std::string("1 1\nextra")}) {
         write_file(state,std::string(invalid));
-        bool rejected=false;try{touch_panel_state(state);}catch(const std::exception&){rejected=true;}
+        bool rejected=false;try{touch_panel_state(state_fd);}catch(const std::exception&){rejected=true;}
         assert(rejected);
     }
     write_file(state,std::string("7 1\n"));
@@ -62,7 +91,7 @@ int main() {
     refused=false;try{touch_panel_provider(panels);}catch(const std::exception&){refused=true;}
     assert(refused);std::filesystem::remove_all(panels/"dsi-other");
     {
-        TouchPanelGuard guard(state,{7,true});
+        TouchPanelGuard guard(state_fd,{7,true});
         touch_transfer_guard();
         write_file(state,std::string("8 0\n"));
         bool blocked=false;
@@ -75,8 +104,8 @@ int main() {
     bool load_failure=false,reset_during_load=false;
     const auto now=std::chrono::steady_clock::now();
     const auto recover=[&](auto time) {
-        return recover_touch_panel(state,admitted,recovery,[&]{release_count++;},[&]{reset_count++;},
-            [&]{drained++;},[&]{
+        return recover_touch_panel(state_fd,admitted,recovery,[&]{release_count++;},[&]{reset_count++;},
+            [&]{drained++;},[&](bool){
                 reloaded++;
                 if(reset_during_load)write_file(state,std::string("9 0\n"));
                 if(load_failure)throw std::runtime_error("injected loader failure");
@@ -102,6 +131,45 @@ int main() {
     assert(recover(now+std::chrono::seconds(11)) && reloaded==5 && recovery.failures==0);
     assert((admitted==TouchPanelState{10,true}) && !touch_transfer_guard);
     assert(recover(now+std::chrono::seconds(12)) && reloaded==5); // No healthy reload loop.
+    // The captured firmware watchdog does not change the panel generation.
+    bool idle_reset=false;
+    recovery.firmware_reset=true;recovery.watchdog_byte=0xfe;
+    const auto firmware_recover=[&](auto time) {
+        return recover_touch_panel(state_fd,admitted,recovery,[&]{release_count++;},[&]{reset_count++;},
+            [&]{drained++;},[&](bool idle){idle_reset=idle;reloaded++;if(load_failure)throw std::runtime_error("watchdog loader failure");},time);
+    };
+    write_file(state,std::string("10 0\n"));
+    assert(!firmware_recover(now) && reloaded==5 && recovery.failures==0); // No SPI while DPMS is off.
+    write_file(state,std::string("10 1\n"));
+    assert(firmware_recover(now) && reloaded==6 && idle_reset && !recovery.firmware_reset);
+    assert((admitted==TouchPanelState{10,true}));
+    recovery.firmware_reset=true;recovery.watchdog_byte=0xfd;
+    assert(firmware_recover(now) && reloaded==7 && !idle_reset);
+    recovery.firmware_reset=true;recovery.watchdog_byte=0xfe;load_failure=true;
+    assert(!firmware_recover(now) && reloaded==8 && recovery.failures==1);
+    assert(!firmware_recover(now) && reloaded==8); // Failed recovery is rate limited.
+    assert(!firmware_recover(now+std::chrono::seconds(1)) && reloaded==9);
+    bool exhausted=false;
+    try{firmware_recover(now+std::chrono::seconds(2));}catch(const std::exception&){exhausted=true;}
+    assert(exhausted && reloaded==10 && recovery.failures==3); // Never silently active forever.
+    std::array<std::uint8_t,uke_touch::frame_size> watchdog_packet{};
+    uke_touch::Watchdog detector;
+    watchdog_packet.fill(0xfe);
+    for(unsigned i=0;i<10;i++)assert(!detector.observe(watchdog_packet));
+    assert(detector.observe(watchdog_packet)==0xfe);
+    watchdog_packet.fill(0xfd);
+    for(unsigned i=0;i<10;i++)assert(!detector.observe(watchdog_packet));
+    watchdog_packet[5]=0;
+    assert(!detector.observe(watchdog_packet) && detector.consecutive==0);
+    watchdog_packet[5]=0xfe;
+    for(unsigned i=0;i<10;i++)assert(!detector.observe(watchdog_packet));
+    assert(detector.observe(watchdog_packet)==0xfd); // OEM also permits a mixed six-byte signature.
+    exhausted=false;
+    try{detector.observe(std::span(watchdog_packet).first(5));}catch(const std::exception&){exhausted=true;}
+    assert(exhausted);
+    close(state_fd);
+    bool closed=false;try{touch_panel_state(state_fd);}catch(const std::exception&){closed=true;}
+    assert(closed);
     std::filesystem::remove_all(root);
     int pipefd[2]; assert(pipe2(pipefd,O_NONBLOCK|O_CLOEXEC)==0);
     std::array<gpio_v2_line_event,16> edges{};
@@ -150,6 +218,8 @@ int main() {
     const auto released=publish({});
     assert(std::count_if(released.begin(),released.end(),[](auto e){return e.type==EV_ABS && e.code==ABS_MT_TRACKING_ID && e.value==-1;})==9);
     assert(std::all_of(ids.begin(),ids.end(),[](int id){return id==-1;}));
+    input_report(pipefd[1],{},ids,geometry);
+    input_event idle{};assert(::read(pipefd[0],&idle,sizeof(idle))==-1 && errno==EAGAIN);
     for(unsigned trial=0;trial<4;trial++) {
         auto invalid=slots;
         if(trial==0) invalid[1].number=invalid[0].number;

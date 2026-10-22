@@ -306,6 +306,7 @@ std::string collect(const std::string &sysfs_root, ModelSession &models, bool in
         << ",\"qualification\":{\"profile\":" << quote(qualification.profile)
         << ",\"reason\":" << quote(profile.reason) << ",\"assurance\":" << quote(profile.assurance)
         << ",\"current\":" << (qualification.current ? "true" : "false")
+        << ",\"voltage\":" << (qualification.voltage ? "true" : "false")
         << ",\"energy\":" << (qualification.energy ? "true" : "false")
         << ",\"capacity_basis\":" << (qualification.capacity_basis ? "true" : "false")
         << ",\"controls_enabled\":false},\"health\":{\"capacity_retention_percent\":";
@@ -321,7 +322,27 @@ std::string collect(const std::string &sysfs_root, ModelSession &models, bool in
     out << ",\"source\":\"linux_power_supply\",\"field\":\"battery.cycle_count\",\"semantics_qualified\":false,\"effective_cycles\":null}"
         << ",\"capacity_retention_method\":\"qualified_learned_full_over_design\",\"observed_efc_is_lifetime_cycles\":false},\"observed_efc\":";
     number(out, derived.observed_efc);
-    out << ",\"efc_coverage\":{\"covered_seconds\":" << derived.covered_seconds
+    const auto &electrical = derived.electrical;
+    out << ",\"engineering\":{\"reported_terminal_power_uw\":";
+    number(out, electrical.reported_terminal_power_uw);
+    out << ",\"power_method\":\"reported_voltage_times_reported_current\",\"power_is_adapter_input\":false"
+        << ",\"power_inputs_qualified\":" << (electrical.pack_basis_qualified && qualification.current && qualification.voltage ? "true" : "false")
+        << ",\"signed_c_rate_per_hour\":";
+    number(out, electrical.signed_c_rate_per_hour); out << ",\"usable_energy_uwh\":";
+    number(out, electrical.usable_energy_uwh); out << ",\"nominal_full_energy_uwh\":";
+    number(out, electrical.nominal_full_energy_uwh);
+    out << ",\"nominal_energy_is_usable_energy\":false,\"cell_topology\":{\"qualified\":"
+        << (electrical.pack_basis_qualified ? "true" : "false") << ",\"series_cells\":";
+    number(out, electrical.pack_basis_qualified ? Number(qualification.series_cells) : Number{});
+    out << ",\"parallel_cells\":";
+    number(out, electrical.pack_basis_qualified ? Number(qualification.parallel_cells) : Number{});
+    out << ",\"average_series_cell_voltage_uv\":";
+    number(out, electrical.average_series_cell_voltage_uv); out << ",\"equal_share_cell_current_ua\":";
+    number(out, electrical.equal_share_cell_current_ua); out << ",\"equal_share_cell_full_uah\":";
+    number(out, electrical.equal_share_cell_full_uah);
+    out << ",\"individual_cell_measurement\":false,\"cell_imbalance_uv\":null}"
+        << ",\"remaining_life_seconds\":null,\"remaining_life_reason\":\"aging_model_unqualified\"}"
+        << ",\"efc_coverage\":{\"covered_seconds\":" << derived.covered_seconds
         << ",\"uncovered_seconds\":" << derived.uncovered_seconds
         << ",\"scope\":\"observed_only\",\"checkpoint\":" << quote(derived.checkpoint) << "},\"forecast\":{\"time_to_target_seconds\":";
     number(out, derived.to_target.seconds); out << ",\"time_to_full_seconds\":";

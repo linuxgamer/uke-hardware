@@ -1,5 +1,24 @@
 # Display controls and raw front-color data
 
+## Cached external-display diagnosis, 20 October 2026
+
+`uke-control usb status` includes standard Type-C alternate modes and cached
+UCSI, QMP PHY and WCD AUX routing attributes. The same snapshot is retained in
+private device reports. The UCSI diagnostic requires the kernel's optional
+`uke_transport_state` attribute; older kernels report null for that field.
+It exposes transport service/request generations, quarantine, request/reply/
+completion/notification boottime timestamps and errors. A timestamp describes
+a driver event, not firmware sample time or port-state freshness. A missing
+firmware error code remains explicitly unknown in the versioned raw record.
+
+Only named bound drivers and fixed cached attributes are read. No GLINK command,
+I2C access, EDID collection, role request, lane switch or modeset is performed.
+Route completion, alternate-mode activity and connector status remain separate
+observations. Link-training and visible-image verification remain null; monitor
+hotplug/reconnect and actual output require their own physical test.
+
+## Original front-color source record
+
 Date: 2026-10-18. Environment: isolated source candidate on app5 source
 `2c37e245accc1da836e003044a96f3df74c2abe5`. No test, compiler, package build,
 installation or device operation was performed by this source workstream.

@@ -10,8 +10,10 @@ static bool bad_readback;
 static bool fail_gpu;
 static bool thermal_clamp;
 static std::string gpu_request;
+static unsigned writes;
 extern "C" char *ppd_utils_get_sysfs_path(const char *path) { return g_strdup((root + path).c_str()); }
 extern "C" gboolean ppd_utils_write(const char *path, const char *value, GError **error) {
+    ++writes;
     if (strstr(path, "/devfreq/") && fail_gpu) {
         fail_gpu = false;
         g_set_error_literal(error, G_IO_ERROR, G_IO_ERROR_FAILED, "Injected GPU write failure");
@@ -104,5 +106,41 @@ int main(int argc, char **argv) {
     write(base + "7/scaling_driver", "qcom-cpufreq-hw\n");
     write("/sys/firmware/devicetree/base/compatible", "xiaomi,other");
     assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_FAIL);
+    write("/sys/firmware/devicetree/base/compatible", std::string("xiaomi,uke\0qcom,sm7675\0", 23));
+    const std::string native = "/sys/module/uke_platform_profile/";
+    std::filesystem::create_directories(root + native);
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
+    write(native + "version", "1\n");
+    const unsigned before_handoff = writes;
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
+    write(native + "parameters/probe_status", "0\n");
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
+    g_signal_emit_by_name(driver->client, "uevent", "change", nullptr);
+    assert(reprobes == 2);
+    g_clear_error(&error);
+    assert(!activate(PPD_DRIVER(driver), PPD_PROFILE_PERFORMANCE, PPD_PROFILE_ACTIVATION_REASON_USER, &error));
+    assert(error && writes == before_handoff);
+    write(native + "parameters/probe_status", "1\n");
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_FAIL);
+    g_signal_emit_by_name(driver->client, "uevent", "change", nullptr);
+    assert(reprobes == 3);
+    g_clear_error(&error);
+    assert(!activate(PPD_DRIVER(driver), PPD_PROFILE_POWER_SAVER, PPD_PROFILE_ACTIVATION_REASON_USER, &error));
+    assert(error && writes == before_handoff);
+    write(native + "parameters/probe_status", "-1\n");
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_SUCCESS);
+    g_clear_error(&error);
+    assert(activate(PPD_DRIVER(driver), PPD_PROFILE_BALANCED, PPD_PROFILE_ACTIVATION_REASON_USER, &error));
+    for (const char *state : {"2\n", "-2\n", "invalid\n", ""}) {
+        write(native + "parameters/probe_status", state);
+        assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
+    }
+    write(native + "version", "2\n");
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
+    std::filesystem::remove_all(root + native);
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_SUCCESS);
+    std::filesystem::create_directories(root + native);
+    std::filesystem::create_symlink("version", root + native + "version");
+    assert(probe(PPD_DRIVER(driver)) == PPD_PROBE_RESULT_DEFER);
     g_print("Uke PPD: CPU/GPU profiles, delayed GPU probe, thermal clamp, write/readback rollback and unsupported inputs passed\n");
 }

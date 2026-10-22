@@ -27,6 +27,30 @@ int main(int argc,char **argv) {
     s.power_uw=8250000; s.temperature_decic=270;
     screen.render(s); assert(screen.pixels!=unknown);
     assert(screen.pixels.size()==Screen::width*Screen::height);
+    s.status="Charging";
+    for(const auto power : {std::optional<std::int64_t>{}, std::optional<std::int64_t>{0}, std::optional<std::int64_t>{-500000}}) {
+        s.power_uw=power;s.full_seconds=600;screen.render(s);const auto with_time=screen.pixels;
+        s.full_seconds.reset();screen.render(s);assert(screen.pixels==with_time);
+    }
+    s.power_uw=500000;s.full_seconds=600;screen.render(s);const auto charging=screen.pixels;
+    s.full_seconds.reset();screen.render(s);assert(screen.pixels!=charging);
+    for(unsigned fault=0;fault<5;fault++) {
+        auto invalid=s;invalid.full_seconds=600;
+        if(fault==0)invalid.valid=false;
+        if(fault==1)invalid.health="Overheat";
+        if(fault==2)invalid.input_known=false;
+        if(fault==3)invalid.online=false;
+        if(fault==4)invalid.status="Not charging";
+        screen.render(invalid);const auto with_time=screen.pixels;
+        invalid.full_seconds.reset();screen.render(invalid);assert(screen.pixels==with_time);
+    }
+    s.status="Not charging";s.power_uw=8250000;screen.render(s);
+    s.power_estimated=false;screen.render(s);const auto measured=screen.pixels;
+    s.power_estimated=true;screen.render(s);assert(screen.pixels!=measured);
+    s.valid=false;screen.render(s);const auto invalid=screen.pixels;
+    s.power_uw.reset();s.temperature_decic.reset();screen.render(s);assert(screen.pixels==invalid);
+    s.valid=true;s.status="Charging";s.power_uw=-950000;screen.render(s);const auto draining=screen.pixels;
+    s.power_uw=950000;screen.render(s);assert(screen.pixels!=draining);
     if(argc==2) {
         std::ofstream image(argv[1],std::ios::binary);
         image<<"P6\n720 480\n255\n";

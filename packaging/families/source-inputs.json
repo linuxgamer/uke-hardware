@@ -1,0 +1,57 @@
+[
+  {
+    "family": "uke-extras",
+    "name": "uke-orangefox-recovery",
+    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11178800/uke-orangefox-recovery-12.0~preview3.20261010-1.src.rpm",
+    "sha256": "38b38f258d7cb6deaed3e103c7a740eaa82f6727a1295dccf5b615be56c2c4de",
+    "build": 11166935,
+    "original_url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test/srpm-builds/11166935/uke-orangefox-recovery-12.0~preview3.20261010-1.src.rpm",
+    "original_build": 11166935,
+    "archive_build": 11178800,
+    "archive_method": "project-fork",
+    "original_sha256": "77d979b962b7f252c9bf6387b3db510a1d4cff980d8acd4c30d489d6c2088f76",
+    "original_payload_sha256": "782f7fee10242b5d4672426417b8b3693487fc95d307b40bb4daee3fc848e638"
+  },
+  {
+    "family": "uke-hw",
+    "name": "uke-touchscreen",
+    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11179043/uke-touchscreen-0.1.0-13.fc46.src.rpm",
+    "sha256": "960c8abc638fd0051f4e1dcceea73e811251412167544d6052e0a0ea9234c91a",
+    "build": 11173836,
+    "original_url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test/srpm-builds/11173836/uke-touchscreen-0.1.0-13.fc46.src.rpm",
+    "original_build": 11173836,
+    "archive_build": 11179043,
+    "archive_method": "project-fork",
+    "original_sha256": "e4a2d7b0858127eee9e2b90f922dfead41101967f59122c36a5915ff6cba6aaa",
+    "original_payload_sha256": "896f46a2ebd5582e586f7c3ff96ec8c0af7c19eeb9e0d822934d09d322459e55"
+  },
+  {
+    "family": "uke-sensors",
+    "name": "uke-front-color",
+    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11179102/uke-front-color-0.1.0-2.fc46.src.rpm",
+    "sha256": "fa423d8305473d2bbaef7010b368c42de33e030999577dc5bbc96df12acdc7f1",
+    "build": 11167823,
+    "original_url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test/srpm-builds/11167823/uke-front-color-0.1.0-2.fc46.src.rpm",
+    "original_build": 11167823,
+    "archive_build": 11179102,
+    "archive_method": "project-fork",
+    "original_sha256": "64032afc94bf21cb2b77a6e116a8a985c2cc57db6231e77919f526d306eef928",
+    "original_payload_sha256": "fe7f537ed3c0c5890a08c3043079002e087de00b2c465960c024b70ecd5259d1"
+  },
+  {
+    "family": "uke-hw",
+    "name": "uke-firmware",
+    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test-archive-20261020/srpm-builds/11179541/uke-firmware-3.0.304.0-1.fc46.src.rpm",
+    "sha256": "375f1f7a0d2e73668820752e48504978b31916a115061604d97d81a291ad8b4c",
+    "build": 11179541
+  },
+  {
+    "family": "uke-extras",
+    "name": "material-decoration",
+    "url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-archive-20261020/srpm-builds/11179253/material-decoration-20261006.094154-3.src.rpm",
+    "sha256": "3eded3d4256923b6acb1949666b696adf77b9357cc0090e3007ab3c7b2010c55",
+    "original_url": "https://download.copr.fedorainfracloud.org/results/mcc45tr/uke-linux-test/srpm-builds/11122182/material-decoration-20261006.094154-3.src.rpm",
+    "archive_build": 11179253,
+    "archive_method": "project-fork"
+  }
+]

@@ -1,0 +1,12 @@
+# Downstream: /etc/tcb is optional when normal shadow accounts are used.
+# Preserve diagnostics for permission, I/O and malformed-path failures.
+diff --git a/src/daemon.c b/src/daemon.c
+--- a/src/daemon.c
++++ b/src/daemon.c
+@@ -384,5 +384,5 @@ entry_generator_fgetpwent (Daemon         *daemon,
+                         }
+                         (void) closedir (dir);
+-                } else {
++                } else if (errno != ENOENT) {
+                         g_warning ("Unable to open %s: %s", tcb_path, g_strerror (errno));
+                 }

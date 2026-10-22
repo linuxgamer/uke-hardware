@@ -1,7 +1,7 @@
 # Uke desktop selections
 
 `uke-desktop-metas` records the console-first desktop policy. The optional
-`kde-plasma-uke-meta` selects original Fedora Rawhide AArch64 Plasma applications.
+`uke-kde-plasma-meta` selects original Fedora Rawhide AArch64 Plasma applications.
 It includes Discover's PackageKit backend, Dolphin plugins and administrative
 access, KWrite, Chromium, display settings and the common desktop utilities.
 Neither package contains a desktop application fork or a hardware service.

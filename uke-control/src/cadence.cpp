@@ -28,6 +28,10 @@ static uint64_t now() {
     return uint64_t(ts.tv_sec)*1000000000ULL + ts.tv_nsec;
 }
 struct Schedule { unsigned stage; uint64_t interval; bool idle, done; };
+static uint64_t next_deadline(uint64_t previous,uint64_t current,uint64_t interval) {
+    const auto next=previous+interval;
+    return next>current?next:current+interval;
+}
 static Schedule schedule(uint64_t elapsed, unsigned frame, unsigned maximum) {
     constexpr std::array<unsigned,12> rates{30,36,40,45,48,50,60,72,90,100,120,144};
     if (elapsed < 24000000000ULL) {
@@ -134,6 +138,9 @@ static void allocate(App &a) {
 int run(int argc,char **argv) {
     unsigned maximum=144;
     if(argc==2&&!strcmp(argv[1],"--self-test")) {
+        assert(next_deadline(100,103,10)==110);
+        assert(next_deadline(100,110,10)==120);
+        assert(next_deadline(100,125,10)==135);
         for(unsigned max:{30U,60U,90U,144U})for(unsigned ms=0;ms<43000;ms+=17) {
             auto s=schedule(uint64_t(ms)*1000000,ms,max);
             if(!s.idle)assert(s.interval>=1000000000ULL/max&&s.interval<=1000000000ULL/30);
@@ -181,7 +188,8 @@ int run(int argc,char **argv) {
                     buffer->busy=true;wl_surface_attach(a.surface,buffer->object,0,0);wl_surface_damage(a.surface,0,0,a.width,a.height);
                     wl_surface_commit(a.surface);++frame;
                 } else if(!s.idle)std::printf("busy,%u,%u\n",frame,s.stage);
-                deadline=now()+s.interval;
+                // Absolute targets exclude rendering cost without a catch-up burst.
+                deadline=next_deadline(deadline,now(),s.interval);
             }
             while(wl_display_prepare_read(a.display)!=0)if(wl_display_dispatch_pending(a.display)<0)throw std::runtime_error("Prepare dispatch");
             const int flushed=wl_display_flush(a.display);const bool wants_write=flushed<0&&errno==EAGAIN;

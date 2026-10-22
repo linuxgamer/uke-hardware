@@ -37,16 +37,19 @@ Profile resolve(const Context &c, const std::string &path, const std::string &id
     if (!c.provider_verified || !c.state.compiled || !c.state.instance || !c.boottime_ns ||
         c.boot_id.empty() || c.kernel_release.empty()) { result.reason = "control_provider_unqualified"; return result; }
     try {
+        if (!c.state.protection_compiled) reject("control_protection_backend_unavailable");
         std::string bytes;
         const auto p = record::read_json(path, uid, &bytes);
         record::keys(p.get(), {"schema_version", "kind", "device", "qualification", "enable_control", "backend",
             "identities", "evidence_id", "proofs", "limits", "source_type", "cap_resume_percent",
-            "may_change_feature", "standard_clients", "current_control", "current_limits"});
+            "may_change_feature", "standard_clients", "current_control", "current_limits", "external_thermal_limits", "safety_backend"});
         if (integer(field(p.get(), "schema_version")) != 1 || string(field(p.get(), "kind")) != "control_qualification" ||
             string(field(p.get(), "device")) != "uke") reject("control_profile_schema_invalid");
         if (string(field(p.get(), "qualification")) != "qualified" || !boolean(field(p.get(), "enable_control")))
             reject("control_profile_unqualified");
         if (string(field(p.get(), "backend")) != "qti_uke_charge_control_v1") reject("control_backend_unknown");
+        if (string(field(p.get(), "safety_backend")) != "uke_os3_0_304_input_suspend53_v1")
+            reject("control_safety_backend_unknown");
         const auto evidence = digest(field(p.get(), "evidence_id"));
         result.may_enable = boolean(field(p.get(), "may_change_feature"));
         result.standard_clients = boolean(field(p.get(), "standard_clients"));
@@ -54,9 +57,24 @@ Profile resolve(const Context &c, const std::string &path, const std::string &id
         auto *proof = field(p.get(), "proofs");
         keys(proof, {"firmware_abi", "ack_envelope", "threshold_readback", "enable_feature",
             "autonomous_protection", "measurements", "source_lifecycle", "protocol_property_abi", "source_contract", "cable_contract",
-            "current_abi", "current_readback", "firmware_cv", "current_restore"});
+            "current_abi", "current_readback", "firmware_cv", "current_restore",
+            "usb_moisture_abi", "usb_moisture_response", "external_thermal_path",
+            "input_suspend_abi", "input_suspend_effect", "input_suspend_restore", "periodic_charge_guard"});
         for (const char *key : {"firmware_abi", "ack_envelope", "threshold_readback", "autonomous_protection",
-            "measurements", "source_lifecycle", "protocol_property_abi", "source_contract", "cable_contract"}) (void)digest(field(proof, key));
+            "measurements", "source_lifecycle", "protocol_property_abi", "source_contract", "cable_contract",
+            "usb_moisture_abi", "usb_moisture_response", "external_thermal_path",
+            "input_suspend_abi", "input_suspend_effect", "input_suspend_restore", "periodic_charge_guard"}) (void)digest(field(proof, key));
+        auto *external = field(p.get(), "external_thermal_limits");
+        keys(external, {"charger", "connector", "connector2"});
+        const char *sensor_names[] = {"charger", "connector", "connector2"};
+        for (size_t i = 0; i < result.external_thermal.size(); ++i) {
+            auto *range = field(external, sensor_names[i]);
+            keys(range, {"minimum_mC", "maximum_mC"});
+            auto &limit = result.external_thermal[i];
+            limit.minimum_mC = i32(field(range, "minimum_mC"));
+            limit.maximum_mC = i32(field(range, "maximum_mC"));
+            if (limit.minimum_mC >= limit.maximum_mC) reject("control_external_thermal_limits_invalid");
+        }
         auto *enable = field(proof, "enable_feature");
         if (result.may_enable || !sd_json_variant_is_null(enable)) (void)digest(enable);
         for (const char *key : {"current_abi", "current_readback", "firmware_cv", "current_restore"}) {

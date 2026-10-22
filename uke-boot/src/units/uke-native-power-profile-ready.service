@@ -1,0 +1,15 @@
+[Unit]
+Description=Refresh the active power-profile daemon after native Uke readiness
+Wants=dbus.service
+After=dbus.service power-profiles-daemon.service
+ConditionPathExists=/sys/module/uke_platform_profile/version
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/senemos-uke/uke-native-power-profile-ready
+TimeoutStartSec=15s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
