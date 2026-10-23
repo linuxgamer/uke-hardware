@@ -184,7 +184,7 @@
     "python3-mako": "1.4.1-2.fc46",
     "python3-pycparser": "3.00-4.fc45",
     "python3-pyyaml": "6.0.3-6.fc45",
-    "llvm-devel": "23.1.3-1.fc46",
+    "llvm-devel": "23.1.4-1.fc46",
     "gcc-c++": "16.2.1-2.fc46.1"
   }
 }

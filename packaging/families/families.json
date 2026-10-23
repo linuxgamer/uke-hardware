@@ -53,7 +53,7 @@
         "uke-boot-integration >= 1.3.4"
       ],
       "suggests": [
-        "uke-adaptive-display = 1.0.16-2%{?dist}",
+        "uke-adaptive-display = 1.0.16-3%{?dist}",
         "uke-battery-observer",
         "uke-charge-control"
       ],
@@ -73,7 +73,7 @@
         "uke-desktop-integration/tests/ppd-cpufreq.cpp",
         "uke-desktop-integration/docs/POWER-PROFILES.md"
       ],
-      "release": 1
+      "release": 2
     },
     {
       "name": "uke-sensors",
@@ -86,7 +86,7 @@
         "uke-ssc-fileservice",
         "uke-front-color"
       ],
-      "release": 1,
+      "release": 2,
       "watch_paths": [
         "uke-sensors/packaging/libssc",
         "uke-sensors/patches/libssc",
@@ -142,7 +142,7 @@
         "uke-desktop-packaging/src/native-runtime/runtime-smoke.cpp",
         "uke-desktop-packaging/src/native-runtime/fedora-exported-symbols.txt"
       ],
-      "release": 5
+      "release": 6
     },
     {
       "name": "uke-metas",
@@ -209,23 +209,23 @@
     "uke-installation-profile": "1.5.2"
   },
   "release_overrides": {
-    "iio-sensor-proxy": "15.fc46",
+    "iio-sensor-proxy": "16.fc46",
     "uke-boot-integration": "1.fc46",
     "uke-touchscreen": "1.fc46",
     "uke-plymonth": "2.fc46",
-    "upower": "10.fc46",
-    "uke-adaptive-display": "2.fc46",
+    "upower": "11.fc46",
+    "uke-adaptive-display": "3.fc46",
     "uke-firmware": "5.fc46",
     "libssc": "12.fc46",
-    "uke-ssc-fileservice": "15.fc46",
-    "uke-front-color": "7.fc46",
-    "at-spi2-core": "6.fc46",
-    "gstreamer1": "6.fc46",
-    "libaccounts-glib": "34.fc46",
-    "libwacom": "7.fc46",
-    "libstdcxx-uke-runtime": "8.fc46",
-    "mesa": "8.fc46",
-    "uke-battery-observer": "6.fc46",
-    "accountsservice": "5.fc46"
+    "uke-ssc-fileservice": "16.fc46",
+    "uke-front-color": "8.fc46",
+    "at-spi2-core": "7.fc46",
+    "gstreamer1": "7.fc46",
+    "libaccounts-glib": "35.fc46",
+    "libwacom": "8.fc46",
+    "libstdcxx-uke-runtime": "9.fc46",
+    "mesa": "9.fc46",
+    "uke-battery-observer": "7.fc46",
+    "accountsservice": "6.fc46"
   }
 }
