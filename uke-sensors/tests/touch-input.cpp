@@ -4,6 +4,7 @@
 #include "../src/touch-thp.cpp"
 #undef main
 #include <cassert>
+#include <cstring>
 int main() {
     char temporary[]="/tmp/uke-touch-gpio-XXXXXX";
     const auto directory=mkdtemp(temporary); assert(directory);
@@ -15,6 +16,27 @@ int main() {
         std::ofstream file(path,std::ios::binary);
         file.write(reinterpret_cast<const char *>(data.data()),data.size()); assert(file);
     };
+    const auto dt=root/"dt", framebuffer=dt/"chosen/framebuffer@e3940000";
+    std::filesystem::create_directories(framebuffer);
+    std::filesystem::create_directories(dt/"panel-uke-handoff");
+    const auto dt_value=[&](const auto &path,const char *value) {
+        write_file(path,std::string(value,std::strlen(value)+1));
+    };
+    assert(!touch_firmware_handoff(dt));
+    dt_value(dt/"panel-uke-handoff/compatible","xiaomi,uke-panel-handoff");
+    dt_value(dt/"panel-uke-handoff/status","disabled");
+    dt_value(dt/"chosen/stdout-path","/chosen/framebuffer@e3940000");
+    dt_value(framebuffer/"compatible","simple-framebuffer");
+    dt_value(framebuffer/"status","okay");
+    assert(touch_firmware_handoff(dt));
+    dt_value(dt/"panel-uke-handoff/status","okay");assert(!touch_firmware_handoff(dt));
+    dt_value(dt/"panel-uke-handoff/status","disabled");
+    dt_value(dt/"chosen/stdout-path","/chosen/framebuffer@e3940000/other");
+    assert(!touch_firmware_handoff(dt));
+    dt_value(dt/"chosen/stdout-path","/chosen/framebuffer@e3940000");
+    dt_value(framebuffer/"compatible","foreign,framebuffer");assert(!touch_firmware_handoff(dt));
+    dt_value(framebuffer/"compatible","simple-framebuffer");
+    assert(touch_firmware_handoff(dt));
     assert(!touch_usb_online(root/"missing"));
     for(const auto *invalid:{"", "2\n", "1", "0\nextra", "bad"}) {
         write_file(root/"online",std::string(invalid));assert(!touch_usb_online(root/"online"));
@@ -57,6 +79,10 @@ int main() {
     const std::array<unsigned char,4> handle{0,0,0,9};
     write_file(controllers/"gpiochip42/of_node/phandle",handle);
     assert(touch_gpio(device,controllers)=="/dev/gpiochip42");
+    assert(panel_id_matches(NormalPanel::Tm,false));
+    assert(panel_id_matches(NormalPanel::Csot,true));
+    assert(!panel_id_matches(NormalPanel::Tm,true));
+    assert(!panel_id_matches(NormalPanel::Csot,false));
     std::filesystem::copy(controllers/"gpiochip42",controllers/"gpiochip43",std::filesystem::copy_options::recursive);
     bool duplicate=false; try{touch_gpio(device,controllers);}catch(const std::exception&){duplicate=true;}
     assert(duplicate); std::filesystem::remove_all(controllers/"gpiochip43");

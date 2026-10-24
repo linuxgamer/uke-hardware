@@ -81,6 +81,30 @@ static std::filesystem::path touch_panel_provider(const std::filesystem::path &r
     }
     return selected;
 }
+static bool touch_dt_string(const std::filesystem::path &path,std::string_view expected) {
+    if(expected.size()>127) return false;
+    std::ifstream file(path,std::ios::binary);
+    std::array<char,129> bytes{};
+    file.read(bytes.data(),bytes.size());
+    return !file.bad() && file.gcount()==std::streamsize(expected.size()+1) &&
+           std::string_view(bytes.data(),expected.size())==expected && bytes[expected.size()]=='\0';
+}
+static bool touch_firmware_handoff(const std::filesystem::path &root="/sys/firmware/devicetree/base") {
+    if(!touch_dt_string(root/"panel-uke-handoff/compatible","xiaomi,uke-panel-handoff") ||
+       !touch_dt_string(root/"panel-uke-handoff/status","disabled")) return false;
+    std::ifstream path(root/"chosen/stdout-path",std::ios::binary);
+    std::array<char,129> bytes{};
+    path.read(bytes.data(),bytes.size());
+    const auto size=path.gcount();
+    if(path.bad() || size<21 || size>=std::streamsize(bytes.size()) || bytes[size-1]!='\0') return false;
+    const std::string_view selected(bytes.data(),size-1);
+    if(!selected.starts_with("/chosen/framebuffer@") ||
+       selected.find('/',8)!=std::string_view::npos ||
+       selected.find(':')!=std::string_view::npos) return false;
+    const auto node=root/std::string(selected.substr(1));
+    return touch_dt_string(node/"compatible","simple-framebuffer") &&
+           touch_dt_string(node/"status","okay");
+}
 static TouchPanelState touch_panel_state(int descriptor) {
     char bytes[64];ssize_t size;
     do {size=pread(descriptor,bytes,sizeof(bytes),0);}while(size<0 && errno==EINTR);
@@ -157,7 +181,10 @@ static std::string touch_gpio(const std::filesystem::path &device,
     require(!selected.empty(),"Touch GPIO controller unavailable");
     return selected;
 }
-static void touch_panel_id_ready(const std::string &controller) {
+static bool panel_id_matches(NormalPanel panel,bool high) {
+    return high == (panel==NormalPanel::Csot);
+}
+static void touch_panel_id_ready(const std::string &controller,NormalPanel panel) {
     const int chip=open(controller.c_str(),O_RDONLY|O_CLOEXEC);
     require(chip>=0,"Touch panel-ID controller unavailable");
     gpio_v2_line_info info{}; info.offset=26;
@@ -168,8 +195,10 @@ static void touch_panel_id_ready(const std::string &controller) {
     const int result=safe ? ioctl(chip,GPIO_V2_GET_LINE_IOCTL,&request) : -1;
     close(chip); require(result==0,"Touch panel-ID must already be an available input");
     gpio_v2_line_values values{}; values.mask=1;
-    const bool high=ioctl(request.fd,GPIO_V2_LINE_GET_VALUES_IOCTL,&values)==0 && (values.bits&1);
-    close(request.fd); require(high,"Touch panel-ID must be high; no output is driven");
+    const bool read=ioctl(request.fd,GPIO_V2_LINE_GET_VALUES_IOCTL,&values)==0;
+    const bool high=values.bits&1;
+    close(request.fd);
+    require(read && panel_id_matches(panel,high),"Touch panel-ID does not match pinned firmware; no output is driven");
 }
 static int touch_irq(const std::string &controller) {
     const int chip=open(controller.c_str(),O_RDONLY|O_CLOEXEC); require(chip>=0,"GPIO controller unavailable");
@@ -333,8 +362,8 @@ int main(int argc,char **argv) {
             image.resize(245760); std::ifstream file(data/"normal.bin",std::ios::binary);
             require(bool(file.read(reinterpret_cast<char *>(image.data()),image.size())) && file.peek()==EOF,
                     "Pinned private normal firmware unavailable");
-            normal_image(image);
-            touch_panel_id_ready(controller);
+            const auto panel=normal_image(image);
+            touch_panel_id_ready(controller,panel);
             if(std::filesystem::exists(device/"driver")) {
                 require(std::filesystem::canonical(device/"driver").filename()=="spidev",
                         "Touch transport already belongs to another driver");
@@ -361,6 +390,7 @@ int main(int argc,char **argv) {
         require(ioctl(spi,SPI_IOC_RD_MODE,&mode)==0 && mode==SPI_MODE_0,"Unexpected SPI mode");
         std::filesystem::path panel_provider;
         TouchPanelState admitted_panel{0,true};
+        bool firmware_handoff=false;
         if(installed) {
             for(unsigned attempt=0;attempt<100;attempt++) {
                 panel_provider=touch_panel_provider();
@@ -371,12 +401,20 @@ int main(int argc,char **argv) {
                     catch(...) {close(initial);throw;}
                     close(initial);
                     if(admitted_panel.ready) break;
+                } else if(touch_firmware_handoff()) {
+                    firmware_handoff=true;
+                    break;
                 }
                 pause_ms(100);
             }
-            require(!panel_provider.empty() && admitted_panel.ready,"O82 kernel panel-reset provider is not ready");
-            panel_event=open(panel_provider.c_str(),O_RDONLY|O_CLOEXEC);
-            require(panel_event>=0,"O82 panel event provider unavailable");
+            require((!panel_provider.empty() && admitted_panel.ready) || firmware_handoff,
+                    "O82 kernel panel-reset provider is not ready");
+            if(!panel_provider.empty()) {
+                panel_event=open(panel_provider.c_str(),O_RDONLY|O_CLOEXEC);
+                require(panel_event>=0,"O82 panel event provider unavailable");
+            } else {
+                std::cout<<"Touch using qualified Uke firmware framebuffer handoff"<<std::endl;
+            }
         }
         if(probe_rates) {
             TouchPanelGuard guard(panel_event,admitted_panel);
@@ -483,6 +521,7 @@ int main(int argc,char **argv) {
             if(const auto fault=watchdog.observe(packet)) {
                 input_report(input,{},ids,geometry);previous_contacts=0;
                 core.reset();core.process(reference_frame->matrix,reference_frame->counter,reference_frame->scan_mode);
+                require(panel_event>=0,"Touch firmware watchdog in framebuffer handoff; restarting service");
                 recovery.firmware_reset=true;recovery.watchdog_byte=*fault;
                 recovery.failures=0;recovery.next={};
                 std::cerr<<"Touch firmware watchdog 0x"<<std::hex<<unsigned(*fault)<<std::dec

@@ -76,6 +76,12 @@ reports and GPIO provider renumbering/ambiguity. Persistent physical startup,
 multi-finger tracking and power-profile/report-rate integration remain unqualified.
 An installed package is not proof of working touch.
 
+23 October 2026: the tested OS3.0.304.0 tablet identifies its O82 panel as TM
+with GPIO 26 low. Fedora 44 images now select the pinned TM firmware and config
+by default; the daemon checks that the GPIO level matches the selected image.
+See the [TM panel lesson](docs/lessons/TOUCH-2026-10-23-TM-PANEL.md). Touch input
+with this update still needs a tablet boot test.
+
 17 October 2026: the native-panel candidate requires the O82 driver's
 `touch_reset_state` generation/ready interface. It waits for panel initialization,
 releases contacts during a reset and restores the qualified normal firmware
@@ -181,7 +187,8 @@ physical sample acceptance. The preview activation guide is linked above.
 ## Normal touch firmware laboratory probe
 
 `touch-normal-probe.cpp` is a separate, gated C++ laboratory tool, not a shipped
-driver or startup service. It admits only the pinned normal O82 CSOT image and
+driver or startup service. Its hardware actions admit only the pinned normal
+O82 CSOT image and
 the measured Uke cascade controller. `manifests/touch-normal-probe-source.json`
 records protocol, image and host SDK provenance; firmware redistribution is not
 admitted. `make test-touch-normal TOUCH_NORMAL_FIRMWARE=PATH` uses a privately

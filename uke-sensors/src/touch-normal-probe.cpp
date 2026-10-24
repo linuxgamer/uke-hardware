@@ -19,12 +19,13 @@ static unsigned word(std::span<const std::uint8_t> data, unsigned offset) {
     return unsigned(data[offset]) | (unsigned(data[offset+1])<<8) |
            (unsigned(data[offset+2])<<16) | (unsigned(data[offset+3])<<24);
 }
-static void normal_image(std::span<const std::uint8_t> data) {
-    // shortcut: this probe admits only the measured O82 CSOT image; extend in the kernel port after qualification.
+enum class NormalPanel { Csot, Tm };
+static NormalPanel normal_image(std::span<const std::uint8_t> data) {
     require(data.size()==245760, "Unexpected normal firmware length");
     require(word(data,0)==0x200 && word(data,4)==0 && word(data,8)==0x174d7 &&
             word(data,12)==0x22000 && word(data,16)==0x100000 && word(data,20)==0x1409f &&
-            word(data,24)==0xe4bdd7f0 && word(data,28)==0x89495247 &&
+            ((word(data,24)==0xe4bdd7f0 && word(data,28)==0x89495247) ||
+             (word(data,24)==0x9441f4bb && word(data,28)==0x9c1002ba)) &&
             data[0x20]==3 && data[0x28]==0 && data[0x29]==0 &&
             word(data,0xf0)==0x1140a0 && word(data,0xf4)==0xff && word(data,0xf8)==0 &&
             word(data,0x1f0)==0x1141a0 && word(data,0x1f4)==0xff && word(data,0x1f8)==0x100,
@@ -33,10 +34,14 @@ static void normal_image(std::span<const std::uint8_t> data) {
         require(b.offset <= data.size() && b.size <= data.size()-b.offset, "Normal firmware bank exceeds file");
     std::array<unsigned char,SHA256_DIGEST_LENGTH> digest{};
     require(SHA256(data.data(),data.size(),digest.data())!=nullptr, "Firmware hash unavailable");
-    static constexpr std::array<unsigned char,32> expected{
+    static constexpr std::array<unsigned char,32> csot{
         0xa4,0xf9,0x49,0xfb,0x89,0xc7,0xea,0xad,0x9d,0xa8,0x5a,0x58,0x85,0xcd,0x2d,0xcc,
         0x1f,0xff,0xbf,0x08,0xbc,0x1e,0x7f,0xfe,0x9f,0x0b,0xb9,0x7c,0x17,0x69,0xb3,0x10};
-    require(digest==expected, "Normal CSOT firmware SHA-256 mismatch");
+    static constexpr std::array<unsigned char,32> tm{
+        0x12,0xce,0x26,0x93,0xb9,0x65,0xa3,0x5e,0x34,0x69,0x98,0x4f,0xd9,0x5a,0xfe,0xbb,
+        0x4c,0x0a,0x74,0x0c,0xa9,0x08,0x15,0x9b,0x0a,0x5e,0x6b,0xda,0xd5,0x96,0x86,0x19};
+    require(digest==csot || digest==tm, "Normal O82 firmware SHA-256 mismatch");
+    return digest==csot ? NormalPanel::Csot : NormalPanel::Tm;
 }
 static std::array<std::uint8_t,3> select_page(unsigned address) {
     return {0xff,std::uint8_t(address>>15),std::uint8_t(address>>7)};
@@ -295,7 +300,7 @@ int main(int argc,char **argv) {
         require(bool(input.read(reinterpret_cast<char *>(data.data()),data.size())) && input.peek()==EOF,
                 "Normal firmware unavailable or unexpected length");
         normal_image(data);
-        if(std::string(argv[1])=="--validate") { std::cout<<"Exact normal CSOT image and layout validated\n"; return 0; }
+        if(std::string(argv[1])=="--validate") { std::cout<<"Pinned O82 normal image and layout validated\n"; return 0; }
         require(compatible("/sys/firmware/devicetree/base/compatible","xiaomi,uke") &&
                 compatible("/sys/bus/spi/devices/spi0.0/of_node/compatible","novatek,NVT-ts-spi"),"Foreign touch device");
         std::ifstream admission("/run/uke-touch-csot-admitted"); std::string token;

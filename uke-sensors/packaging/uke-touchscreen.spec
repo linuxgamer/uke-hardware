@@ -6,7 +6,7 @@
 %endif
 Name: uke-touchscreen
 Version: 0.1.0
-Release: 13%{?dist}
+Release: 15%{?dist}
 Summary: Native Novatek NT36532 touchscreen input for Xiaomi Uke
 License: GPL-3.0-or-later AND Apache-2.0
 ExclusiveArch: aarch64
@@ -70,6 +70,13 @@ install -Dm644 LICENSE.GPL-3.0 %{buildroot}/usr/share/licenses/%{name}/GPL-3.0
 %license /usr/share/licenses/%{name}/GPL-3.0
 
 %changelog
+* Sat Oct 24 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 0.1.0-15
+- Admit touch when the Uke boot recipe explicitly retains its firmware framebuffer.
+- Restart the service on a firmware watchdog without a native panel reset provider.
+
+* Fri Oct 23 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 0.1.0-14
+- Admit pinned O82 TM firmware only when panel-ID GPIO is low.
+
 * Mon Oct 19 2026 Senemos Maintainers <75160848+MCC45TR@users.noreply.github.com> - 0.1.0-13
 - Bound palm-history counters and test lifetime counter saturation.
 
