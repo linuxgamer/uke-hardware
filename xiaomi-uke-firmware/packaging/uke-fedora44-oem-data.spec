@@ -1,10 +1,16 @@
 Name: uke-fedora44-oem-data
 Version: 3.0.304.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Xiaomi Pad 7 model firmware and SSC configuration from OS3.0.304.0
 License: LicenseRef-Proprietary
 Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
+
+# Some firmware segments look like ELF binaries. Stripping them changes their
+# signed OEM bytes and makes WPSS reject the resulting image at boot.
+%global __brp_strip %{nil}
+%global __brp_strip_comment_note %{nil}
+%global __brp_strip_lto %{nil}
 
 %description
 Model-level SSC configuration, Bluetooth, WPSS, ADSP and Adreno firmware for
@@ -34,6 +40,9 @@ cp -a firmware/. %{buildroot}%{_prefix}/lib/firmware/
 %{_prefix}/lib/firmware/ath11k/WCN6750/hw1.0
 
 %changelog
+* Fri Oct 23 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 3.0.304.0-2
+- Keep OEM firmware bytes unchanged during RPM packaging.
+
 * Thu Oct 22 2026 Uke Fedora Maintainers <linuxgamer@users.noreply.github.com> - 3.0.304.0-1
 - Use the pinned OS3.0.304.0 model firmware and SSC configuration.
 

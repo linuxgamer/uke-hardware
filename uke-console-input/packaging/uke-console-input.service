@@ -1,0 +1,37 @@
+[Unit]
+Description=Experimental framebuffer touch keyboard for Xiaomi Pad 7 TTY
+Documentation=https://gitlab.postmarketos.org/postmarketOS/buffybox
+After=systemd-udevd.service uke-touchscreen.service getty@tty1.service
+Wants=uke-touchscreen.service
+StartLimitIntervalSec=0
+ConditionPathExists=/dev/fb0
+ConditionPathExists=/dev/uinput
+ConditionPathExists=/dev/input/uke-touchscreen
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/buffyboard
+Restart=on-failure
+RestartSec=3s
+DevicePolicy=closed
+DeviceAllow=/dev/uinput rw
+DeviceAllow=char-fb rw
+DeviceAllow=char-input rw
+DeviceAllow=char-tty rw
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RemoveIPC=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

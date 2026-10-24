@@ -11,6 +11,7 @@ This repository contains platform services, sensors, firmware packaging, boot in
 | `uke-boot` | Boot and USB debug integration |
 | `uke-platform-runtime` | Shared platform runtime services |
 | `uke-sensors` | Sensor detection and tools |
+| `uke-console-input` | Experimental framebuffer touch keyboard for the Fedora 44 TTY image |
 | `uke-control` | Device controls, power-related settings and diagnostics |
 | `uke-camera` | Camera integration work |
 | `uke-desktop-integration` | Integration with the Fedora desktop |

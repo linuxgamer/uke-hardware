@@ -27,7 +27,14 @@ build_source() {
         cp "$archive" "$top/SOURCES/"
         sed -i "/^Source0:/aSource9995: $source_name-$version-$release.src.rpm" "$spec"
     fi
-    jq -r --arg name "$name" '(.build_tools + (.packages[]|select(.name==$name)|.host_tools // {}))|to_entries[]|[.key,.value]|@tsv' "$project/manifests/native-runtime.json" > "$top/host-tools"
+    # The Fedora 44 image build uses this Fedora 45 sensor source recipe, but
+    # its available compiler and Meson releases differ from Rawhide's pins.
+    # Keep the original spec's unversioned BuildRequires on that target.
+    if [[ $name == iio-sensor-proxy && $(rpm --eval '%{fedora}') == 44 ]]; then
+        printf '# Fedora 44 uses the source spec dependencies\n' > "$top/host-tools"
+    else
+        jq -r --arg name "$name" '(.build_tools + (.packages[]|select(.name==$name)|.host_tools // {}))|to_entries[]|[.key,.value]|@tsv' "$project/manifests/native-runtime.json" > "$top/host-tools"
+    fi
     awk '
       NR==FNR {tools[$1]=$2;next}
       /^BuildRequires:/ {

@@ -1,0 +1,3 @@
+# Start again when the exact Novatek touch device appears after the service's
+# initial conditions were skipped, or after the touch daemon recovers.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Novatek NT36532 Uke Touchscreen", SYMLINK+="input/uke-touchscreen", TAG+="systemd", ENV{SYSTEMD_WANTS}+="uke-console-input.service"

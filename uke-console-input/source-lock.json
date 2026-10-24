@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "buffybox": {
+    "url": "https://gitlab.postmarketos.org/postmarketOS/buffybox.git",
+    "tag": "3.6.0",
+    "commit": "d0f52495f7f3afa8839eef4b19f43f4ca1243107"
+  },
+  "lvgl": {
+    "url": "https://github.com/lvgl/lvgl.git",
+    "commit": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"
+  },
+  "source_sha256": "e33d332ae6638652b95417dbf570fbe681d984593d2af22e127c06f3d7262327",
+  "license": "GPL-3.0-or-later AND MIT AND Apache-2.0 AND OFL-1.1 AND CC-BY-SA-4.0",
+  "hardware_tested": false
+}
